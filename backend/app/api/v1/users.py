@@ -15,10 +15,27 @@ from app.schemas.auth import (
     UserSettingsUpdate,
 )
 from app.schemas.common import Message
+from app.services import mentor
 from app.services.activity import log_activity
+from app.services.planner import active_plan
 from app.services.serializers import load_json_list, user_out
 
 router = APIRouter(prefix="/users", tags=["Profile & settings"])
+
+#: Profile fields the AI Academic Mentor summary is written from. The summary is
+#: a stored snapshot, so editing any of these without regenerating it leaves the
+#: dashboard describing a year group or curriculum the student no longer has.
+_SUMMARY_FIELDS = frozenset(
+    {
+        "year_group",
+        "curriculum",
+        "target_degree",
+        "weekday_hours",
+        "weekend_hours",
+        "preferred_study_time",
+        "study_habits",
+    }
+)
 
 _ALLOWED_IMAGE_TYPES = {
     "image/png": ".png",
@@ -35,7 +52,11 @@ _ALLOWED_IMAGE_TYPES = {
     summary="Update the student profile",
     description=(
         "Partial update — send only the fields you want to change. Setting "
-        "`universities` replaces the whole list."
+        "`universities` replaces the whole list.\n\n"
+        "Changing anything the mentor summary is built from also regenerates "
+        "that summary, so the dashboard cannot keep describing the old profile. "
+        "Note that subjects, the exam timetable and the study plan are **not** "
+        "rebuilt here — re-run onboarding (`POST /onboarding/complete`) for that."
     ),
 )
 def update_profile(payload: ProfileUpdate, user: CurrentUser, db: DbSession) -> UserOut:
@@ -60,6 +81,12 @@ def update_profile(payload: ProfileUpdate, user: CurrentUser, db: DbSession) -> 
         ]
 
     db.add(user)
+
+    touched_summary = bool(_SUMMARY_FIELDS & set(data)) or habits is not None
+    if touched_summary and user.onboarding_completed:
+        db.flush()
+        mentor.refresh_summary(db, user, active_plan(db, user))
+
     log_activity(db, user, "Updated your profile", kind="account", icon="user-round")
     db.commit()
     db.refresh(user)

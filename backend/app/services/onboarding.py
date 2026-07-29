@@ -62,6 +62,14 @@ def apply(db: Session, user: User, payload: OnboardingSubmit) -> MentorSummary:
     subject_lookup: Dict[str, Subject] = {s.name.lower(): s for s in created_subjects}
 
     # --- Q8 -> exam timetable ----------------------------------------------
+    # Onboarding is re-runnable, and the wizard is pre-filled with the current
+    # timetable, so what the student submits replaces it. Without clearing
+    # first, a second pass duplicates every paper. Admissions-test dates live
+    # in `kind="admission"` rows and are left alone.
+    for stale in [exam for exam in user.exams if exam.kind == "school"]:
+        db.delete(stale)
+    db.flush()
+
     for entry in payload.exams:
         subject = subject_lookup.get(entry.subject.strip().lower())
         db.add(

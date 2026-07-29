@@ -124,6 +124,10 @@ export default function Onboarding() {
   const [summary, setSummary] = useState(null)
   const savingRef = useRef(false)
 
+  //: True when an already-onboarded student is coming back through the wizard
+  //: (from the profile page), rather than filling it in for the first time.
+  const isReview = Boolean(user?.onboarding_completed)
+
   useEffect(() => {
     let alive = true
     ;(async () => {
@@ -134,7 +138,40 @@ export default function Onboarding() {
         ])
         if (!alive) return
         setMeta(questions)
-        if (draft?.answers && Object.keys(draft.answers).length) {
+
+        // A returning student's answers live on their account, not in a draft
+        // (completing the wizard clears the draft), so rebuild them from the
+        // profile, subjects and exam timetable. Submitting replaces all three,
+        // which is only safe because what they see is what they already have.
+        if (user?.onboarding_completed) {
+          const [subjects, exams] = await Promise.all([
+            api.subjects.list().catch(() => []),
+            api.exams.list({ kind: 'school' }).catch(() => []),
+          ])
+          if (!alive) return
+          setAnswers((current) => ({
+            ...current,
+            name: user.name || current.name,
+            year_group: user.year_group || '',
+            curriculum: user.curriculum || '',
+            subjects: (subjects || []).map((s) => s.name),
+            preparing_admission_exams: (user.admission_exams || []).length > 0,
+            admission_exams: (user.admission_exams || []).map((e) => e.code),
+            universities: user.universities || [],
+            target_degree: user.target_degree || '',
+            exams: (exams || []).map((e) => ({
+              subject: e.subject_name || e.title,
+              exam_board: e.exam_board || '',
+              exam_date: e.exam_date || '',
+              exam_time: e.exam_time || '09:00',
+              paper: e.paper || '',
+            })),
+            weekday_hours: user.weekday_hours,
+            weekend_hours: user.weekend_hours,
+            preferred_study_time: user.preferred_study_time,
+            study_habits: user.study_habits || [],
+          }))
+        } else if (draft?.answers && Object.keys(draft.answers).length) {
           setAnswers((current) => ({ ...current, ...draft.answers }))
           setStage(draft.step > 0 ? draft.step : 'intro')
         }
@@ -265,18 +302,24 @@ export default function Onboarding() {
                 <Sparkles className="size-8" />
               </span>
               <h1 className="mt-6 font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                {meta?.intro?.title || "Hi! I'm your AI Study Mentor."}
+                {isReview
+                  ? "Let's update your study plan."
+                  : meta?.intro?.title || "Hi! I'm your AI Study Mentor."}
               </h1>
               <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground sm:text-base">
-                {meta?.intro?.subtitle ||
-                  "I'm going to ask a few questions to create your personalised study plan."}
+                {isReview
+                  ? 'Your profile changed, so I need to run back through these questions. ' +
+                    'Everything is filled in with your current answers — change what you ' +
+                    'like and I will rebuild your subjects, timetable and plan around them.'
+                  : meta?.intro?.subtitle ||
+                    "I'm going to ask a few questions to create your personalised study plan."}
               </p>
               <p className="mt-1 text-xs font-medium text-muted-foreground">
-                {questions.length} quick questions · about {meta?.intro?.estimated_minutes || 3}{' '}
-                minutes
+                {questions.length} {isReview ? 'questions to review' : 'quick questions'} · about{' '}
+                {meta?.intro?.estimated_minutes || 3} minutes
               </p>
               <Button size="lg" className="mt-8" onClick={() => setStage(0)}>
-                Let's begin <ArrowRight />
+                {isReview ? 'Review my answers' : "Let's begin"} <ArrowRight />
               </Button>
             </motion.div>
           )}

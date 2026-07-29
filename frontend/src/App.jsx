@@ -50,11 +50,13 @@ function RequireAuth({ children }) {
   return children
 }
 
+// Onboarding is reachable after it has been completed, not only before: editing
+// the profile sends the student back through the ten questions so their
+// subjects, timetable and plan are rebuilt around the new answers.
 function RequireOnboardingAccess({ children }) {
-  const { isAuthenticated, loading, needsOnboarding } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   if (loading) return <FullscreenLoader />
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (!needsOnboarding) return <Navigate to="/dashboard" replace />
   return children
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Camera, Save, Trash2, UserRound } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
@@ -26,6 +27,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 export default function Profile() {
   const { user, patchUser } = useAuth()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const { data: catalog } = useFetch(() => api.catalog.all(), [])
   const [pending, wrap] = usePending()
   const [avatarPending, wrapAvatar] = usePending()
@@ -79,7 +81,15 @@ export default function Profile() {
           universities: form.universities,
         })
         patchUser(updated)
-        toast.success('Profile updated')
+        toast.success(
+          'Profile saved',
+          'Now confirm your answers so your plan matches them.',
+        )
+        // Saving the profile changes the inputs the planner runs on, but not the
+        // subjects, timetable or plan themselves. Sending the student back
+        // through the ten questions — pre-filled — is what actually rebuilds
+        // those, so the dashboard ends up agreeing with the profile.
+        navigate('/onboarding')
       } catch (err) {
         toast.error('Could not save your profile', err instanceof ApiError ? err.message : undefined)
       }
@@ -320,9 +330,15 @@ export default function Profile() {
               </div>
             </Field>
 
-            <Button onClick={save} loading={pending}>
-              <Save /> Save changes
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={save} loading={pending}>
+                <Save /> Save changes
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Saving takes you back through the ten questions so your subjects,
+                timetable and plan are rebuilt to match.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
