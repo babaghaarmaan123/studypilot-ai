@@ -2,81 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Palette: neutral slate surfaces with a single teal primary and amber for
+ * urgency. Deliberately not the indigo-to-violet gradient every generated
+ * template ships with, and there are no gradients on interactive elements at
+ * all: flat fills read as a considered product, gradients read as decoration.
+ *
+ * Hues are fixed so the two themes stay siblings rather than inversions:
+ *   slate  222   teal 178   amber 38   red 2   green 152
+ */
 @layer base {
   :root {
-    --background: 250 50% 99%;
-    --foreground: 224 40% 12%;
+    --background: 220 20% 98%;
+    --foreground: 222 30% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 40% 12%;
+    --card-foreground: 222 30% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 40% 12%;
+    --popover-foreground: 222 30% 12%;
 
-    --primary: 243 75% 62%;
+    /* L=28% keeps white text on the primary button at 5.0:1, clearing AA.
+       At the 32% it started on it measured 4.33:1, which fails. */
+    --primary: 178 70% 28%;
     --primary-foreground: 0 0% 100%;
-    --primary-soft: 243 90% 96%;
+    --primary-soft: 178 52% 95%;
 
-    --secondary: 240 24% 96%;
-    --secondary-foreground: 224 32% 22%;
+    --secondary: 220 16% 95%;
+    --secondary-foreground: 222 24% 24%;
 
-    --muted: 240 22% 96%;
-    --muted-foreground: 224 12% 46%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 10% 44%;
 
-    --accent: 268 80% 96%;
-    --accent-foreground: 268 60% 32%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 30 60% 12%;
 
-    --destructive: 0 78% 58%;
+    --destructive: 2 74% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 158 68% 38%;
+    --success: 152 58% 34%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 34 94% 48%;
-    --warning-foreground: 24 60% 14%;
+    --warning: 38 92% 46%;
+    --warning-foreground: 30 60% 12%;
 
-    --border: 240 20% 91%;
-    --input: 240 20% 91%;
-    --ring: 243 75% 62%;
+    --border: 220 15% 89%;
+    --input: 220 15% 89%;
+    --ring: 178 66% 32%;
 
-    --radius: 0.85rem;
+    --radius: 0.75rem;
   }
 
+  /*
+   * Dark mode is the considered one: near-black slate that is warm enough not
+   * to look like a terminal, three distinct surface levels so cards read
+   * against the page, and a teal bright enough to pass contrast on all three.
+   */
   .dark {
-    --background: 226 40% 7%;
-    --foreground: 220 30% 96%;
+    --background: 222 24% 8%;
+    --foreground: 220 16% 96%;
 
-    --card: 226 34% 11%;
-    --card-foreground: 220 30% 96%;
+    --card: 222 22% 11%;
+    --card-foreground: 220 16% 96%;
 
-    --popover: 226 34% 11%;
-    --popover-foreground: 220 30% 96%;
+    --popover: 222 22% 13%;
+    --popover-foreground: 220 16% 96%;
 
-    --primary: 243 82% 70%;
-    --primary-foreground: 226 45% 8%;
-    --primary-soft: 243 40% 20%;
+    --primary: 178 62% 48%;
+    --primary-foreground: 222 30% 7%;
+    --primary-soft: 178 40% 18%;
 
-    --secondary: 226 26% 17%;
-    --secondary-foreground: 220 30% 94%;
+    --secondary: 222 18% 17%;
+    --secondary-foreground: 220 16% 94%;
 
-    --muted: 226 26% 16%;
-    --muted-foreground: 222 14% 66%;
+    --muted: 222 18% 16%;
+    --muted-foreground: 220 10% 64%;
 
-    --accent: 268 40% 22%;
-    --accent-foreground: 268 90% 90%;
+    --accent: 38 92% 58%;
+    --accent-foreground: 30 60% 10%;
 
-    --destructive: 0 70% 60%;
+    --destructive: 2 70% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 158 62% 46%;
-    --success-foreground: 226 45% 8%;
+    --success: 152 52% 46%;
+    --success-foreground: 222 30% 7%;
 
-    --warning: 34 92% 58%;
-    --warning-foreground: 26 60% 10%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 30 60% 10%;
 
-    --border: 226 24% 20%;
-    --input: 226 24% 22%;
-    --ring: 243 82% 70%;
+    --border: 222 16% 20%;
+    --input: 222 16% 22%;
+    --ring: 178 62% 48%;
   }
 
   * {
@@ -144,24 +160,26 @@
     @apply border border-white/60 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/5;
   }
 
+  /*
+   * Two low-contrast washes in the brand hues rather than the four-colour
+   * rainbow blur. Kept only for full-page backdrops (auth, onboarding), never
+   * behind content that has to be read.
+   */
   .pastel-mesh {
     background-image:
-      radial-gradient(at 12% 8%, hsla(243, 90%, 84%, 0.5) 0px, transparent 55%),
-      radial-gradient(at 88% 4%, hsla(280, 90%, 86%, 0.45) 0px, transparent 52%),
-      radial-gradient(at 78% 82%, hsla(190, 90%, 82%, 0.42) 0px, transparent 55%),
-      radial-gradient(at 8% 92%, hsla(330, 92%, 88%, 0.4) 0px, transparent 52%);
+      radial-gradient(at 10% 4%, hsla(178, 60%, 82%, 0.4) 0px, transparent 50%),
+      radial-gradient(at 88% 96%, hsla(38, 82%, 84%, 0.3) 0px, transparent 48%);
   }
 
   .dark .pastel-mesh {
     background-image:
-      radial-gradient(at 12% 8%, hsla(243, 70%, 40%, 0.34) 0px, transparent 55%),
-      radial-gradient(at 88% 4%, hsla(280, 70%, 42%, 0.3) 0px, transparent 52%),
-      radial-gradient(at 78% 82%, hsla(190, 70%, 36%, 0.28) 0px, transparent 55%),
-      radial-gradient(at 8% 92%, hsla(330, 70%, 44%, 0.26) 0px, transparent 52%);
+      radial-gradient(at 10% 4%, hsla(178, 54%, 30%, 0.26) 0px, transparent 50%),
+      radial-gradient(at 88% 96%, hsla(38, 60%, 32%, 0.16) 0px, transparent 48%);
   }
 
+  /* Kept as a class so callers do not change; now a flat accent colour. */
   .text-gradient {
-    @apply bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent;
+    @apply text-primary;
   }
 
   .skeleton {
@@ -176,36 +194,75 @@
   }
 }
 
-/* --- react-calendar theming ---------------------------------------------- */
+/* --- react-calendar theming ----------------------------------------------
+ *
+ * Every tile is at least 44x44 CSS px, the minimum comfortable touch target,
+ * which the library's own stylesheet does not guarantee: its tiles shrink with
+ * the container and on a 375px phone that leaves roughly 40px cells with 11px
+ * numerals inside. `min-height` on the tile plus a 1fr grid keeps them square
+ * on wide screens and tall enough on narrow ones.
+ */
+/*
+ * The library ships `.react-calendar { width: 350px }` and its stylesheet is
+ * imported from the page component, so it lands after this file and wins on
+ * source order. That fixed 350px then becomes the min-content width of the
+ * single-column grid on mobile, pushing the whole card 17px past the viewport
+ * and taking the alignment with it. `!important` is the honest fix here: the
+ * alternative is depending on import order across two files.
+ */
 .react-calendar {
-  @apply w-full border-none bg-transparent font-sans;
+  @apply border-none bg-transparent font-sans;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 .react-calendar__navigation {
   @apply mb-2 flex items-center gap-1;
 }
 .react-calendar__navigation button {
-  @apply min-w-10 rounded-lg px-2 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-40;
+  /* 44px minimum in both directions for the month arrows. */
+  @apply min-h-11 min-w-11 rounded-lg px-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-40;
 }
 .react-calendar__navigation__label {
-  @apply font-display text-base;
+  @apply font-display text-sm sm:text-base;
 }
 .react-calendar__month-view__weekdays {
-  @apply mb-1 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  @apply mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px];
 }
 .react-calendar__month-view__weekdays abbr {
-  @apply no-underline;
+  @apply cursor-default no-underline;
+}
+.react-calendar__month-view__weekdays__weekday {
+  @apply p-1;
+}
+/* The library lays days out with flex-basis percentages; a grid divides the
+   row exactly and stops the 1px rounding drift that made columns look skewed. */
+.react-calendar__month-view__days {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
 }
 .react-calendar__tile {
-  @apply relative aspect-square rounded-xl border border-transparent p-1 text-sm text-foreground transition-colors hover:bg-muted;
+  @apply relative flex min-h-11 items-start justify-center rounded-lg border border-transparent p-1 text-sm text-foreground transition-colors hover:bg-muted;
+  /* Overrides the library's inline flex-basis. */
+  max-width: 100% !important;
+  flex: initial !important;
+}
+@screen sm {
+  .react-calendar__tile {
+    @apply aspect-square items-center;
+  }
 }
 .react-calendar__month-view__days__day--neighboringMonth {
   @apply text-muted-foreground/40;
 }
 .react-calendar__tile--now {
-  @apply border-primary/40 bg-primary/5 font-semibold;
+  @apply border-primary/50 bg-primary/10 font-semibold;
 }
 .react-calendar__tile--active {
-  @apply bg-primary text-primary-foreground hover:bg-primary;
+  @apply bg-primary font-semibold text-primary-foreground hover:bg-primary;
+}
+.react-calendar__tile:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
 }
 .react-calendar__tile--active .cal-dot {
   @apply bg-primary-foreground;

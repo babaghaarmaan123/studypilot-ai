@@ -34,7 +34,7 @@ const FEATURES = [
     title: 'AI Study Planner',
     description:
       'A personalised day-by-day timetable built from your exam dates, subject difficulty, available hours and remaining syllabus.',
-    tone: 'from-indigo-500/15 to-violet-500/10 text-indigo-600 dark:text-indigo-300',
+    tone: 'bg-primary/10 text-primary',
   },
   {
     icon: BookOpen,
@@ -54,21 +54,21 @@ const FEATURES = [
     icon: BarChart3,
     title: 'Analytics',
     description:
-      'Weekly and monthly study hours, subject distribution, streaks and past-paper improvement — all in one dashboard.',
+      'Weekly and monthly hours, subject split, streaks and past-paper improvement in one place.',
     tone: 'from-sky-500/15 to-cyan-500/10 text-sky-600 dark:text-sky-300',
   },
   {
     icon: GraduationCap,
     title: 'University Admission Preparation',
     description:
-      'TMUA, ESAT, MAT, PAT, STEP, LNAT, UCAT, Oxford & Cambridge tests, IELTS and PTE — built into your weekly plan.',
-    tone: 'from-violet-500/15 to-fuchsia-500/10 text-violet-600 dark:text-violet-300',
+      'TMUA, ESAT, MAT, PAT, STEP, LNAT, UCAT, Oxford and Cambridge tests, IELTS and PTE, built into your weekly plan.',
+    tone: 'bg-primary/10 text-primary',
   },
   {
     icon: Award,
     title: 'Achievements & Streaks',
     description:
-      'XP, levels and badges that keep motivation high — daily streaks, perfect weeks and syllabus milestones.',
+      'XP, levels and badges for daily streaks, perfect weeks and syllabus milestones.',
     tone: 'from-rose-500/15 to-pink-500/10 text-rose-600 dark:text-rose-300',
   },
 ]
@@ -101,15 +101,15 @@ const FAQS = [
   },
   {
     q: 'How does the AI study planner actually work?',
-    a: 'It scores every subject on exam proximity, difficulty, priority and remaining syllabus, then fills your available hours block by block — automatically reshuffling if you miss a session.',
+    a: 'It scores every subject on exam proximity, difficulty, priority and remaining syllabus, then fills your available hours block by block. Miss a session and it reshuffles.',
   },
   {
     q: 'What is spaced-repetition revision?',
-    a: 'Whenever you complete a topic, StudyPilot books quick recall checkpoints 2, 7 and 14 days later, plus a final pass a few days before the exam — proven to improve long-term retention.',
+    a: 'Whenever you complete a topic, StudyPilot books recall checkpoints 2, 7 and 14 days later, plus a final pass a few days before the exam.',
   },
   {
     q: 'Can I prepare for university admissions tests too?',
-    a: 'Yes — tell us which admissions tests you’re sitting (TMUA, ESAT, MAT, PAT, STEP, LNAT, UCAT, Oxford/Cambridge tests, IELTS or PTE) during onboarding and dedicated practice sessions are woven into your weekly plan.',
+    a: 'Yes. Tell us which tests you are sitting (TMUA, ESAT, MAT, PAT, STEP, LNAT, UCAT, Oxford and Cambridge tests, IELTS or PTE) during onboarding, and practice sessions are added to your weekly plan.',
   },
   {
     q: 'Is my data private?',
@@ -164,7 +164,7 @@ export default function Landing() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-glow">
+            <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Rocket className="size-4.5" />
             </span>
             <span className="font-display text-lg font-bold tracking-tight">
@@ -425,14 +425,15 @@ export default function Landing() {
 
       {/* CTA */}
       <section className="container py-16 sm:py-24">
-        <div className="relative overflow-hidden rounded-4xl border border-border/70 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 px-6 py-14 text-center text-white shadow-lift sm:px-12">
+        <div className="relative overflow-hidden rounded-4xl border border-border/70 bg-primary px-6 py-14 text-center text-primary-foreground shadow-lift sm:px-12">
           <Target className="mx-auto size-10 opacity-80" />
           <h2 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-4xl">
             Ready to build your personalised study plan?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">
-            Join students preparing for GCSE, A Level and International A Level exams —
-            and university admissions — with a plan built around their real timetable.
+            Join students preparing for GCSE, A Level and International A Level
+            exams, and university admissions, with a plan built around their real
+            timetable.
           </p>
           <Button size="lg" variant="secondary" className="mt-7 text-indigo-700" asChild>
             <Link to="/register">
@@ -446,7 +447,7 @@ export default function Landing() {
       <footer className="border-t border-border/60 py-10">
         <div className="container flex flex-col items-center justify-between gap-6 sm:flex-row">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Rocket className="size-4" />
             </span>
             <span className="font-display text-sm font-bold">StudyPilot AI</span>

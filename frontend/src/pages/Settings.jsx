@@ -100,7 +100,7 @@ export default function Settings() {
         const doc = new jsPDF()
 
         doc.setFontSize(18)
-        doc.text('StudyPilot AI — Study Timetable', 14, 18)
+        doc.text('StudyPilot AI Study Timetable', 14, 18)
         doc.setFontSize(10)
         doc.setTextColor(100)
         doc.text(`Generated ${data.generated_on}`, 14, 25)
@@ -115,7 +115,7 @@ export default function Settings() {
           head: [['Subject', 'Exam board', 'Difficulty', 'Progress']],
           body: data.subjects.map((s) => [
             s.name,
-            s.exam_board || '—',
+            s.exam_board || '-',
             `${s.difficulty}/5`,
             `${Math.round(s.completion_percentage)}%`,
           ]),
@@ -125,7 +125,7 @@ export default function Settings() {
         autoTable(doc, {
           startY: doc.lastAutoTable.finalY + 10,
           head: [['Exam', 'Date', 'Time', 'Board']],
-          body: data.exams.map((e) => [e.title, e.exam_date, e.exam_time || '—', e.exam_board || '—']),
+          body: data.exams.map((e) => [e.title, e.exam_date, e.exam_time || '-', e.exam_board || '-']),
           headStyles: { fillColor: [99, 102, 241] },
         })
 

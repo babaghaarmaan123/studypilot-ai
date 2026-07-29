@@ -130,7 +130,7 @@ def regenerate(user: CurrentUser, db: DbSession) -> RegenerateResponse:
             plan=plan_out(current),
             missed_sessions_rescheduled=missed,
             message=(
-                f"{missed} missed session(s) recorded — not enough to justify "
+                f"{missed} missed session(s) recorded. Not enough to justify "
                 "reshuffling your plan yet."
             )
             if missed

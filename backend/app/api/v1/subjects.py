@@ -260,7 +260,7 @@ async def upload_syllabus_pdf(
     log_activity(
         db,
         user,
-        f"Generated the syllabus for {subject.name} — "
+        f"Generated the syllabus for {subject.name}: "
         f"{len(units)} units, {topic_count} topics",
         kind="subject",
         icon="file-check",

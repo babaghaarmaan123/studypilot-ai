@@ -65,7 +65,7 @@ export default function Register() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="It takes about a minute — your AI Study Mentor does the rest."
+      subtitle="Ten questions and your first plan is ready."
       footer={
         <>
           Already have an account?{' '}

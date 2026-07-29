@@ -40,7 +40,7 @@ function OverviewTab({ subject }) {
   const statusMeta = SYLLABUS_STATUS_META[subject.syllabus_status] || SYLLABUS_STATUS_META.not_uploaded
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Completion"
           value={`${Math.round(subject.completion_percentage)}%`}
@@ -185,7 +185,7 @@ function NotesTab({ subject, onSaved }) {
         <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Jot down anything worth remembering about this subject — tricky topics, teacher tips, exam quirks…"
+          placeholder="Tricky topics, teacher tips, exam quirks."
           className="min-h-[220px]"
         />
         <Button onClick={save} loading={pending}>
@@ -202,7 +202,7 @@ function AnalyticsTab({ subject }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Completion"
           value={`${Math.round(subject.completion_percentage)}%`}
@@ -249,7 +249,7 @@ export default function SubjectDetail() {
   } = useFetch(() => api.subjects.get(Number(id)), [id])
 
   useEffect(() => {
-    document.title = subject ? `${subject.name} — StudyPilot AI` : 'StudyPilot AI'
+    document.title = subject ? `${subject.name} | StudyPilot AI` : 'StudyPilot AI'
   }, [subject])
 
   if (loading || !subject) {

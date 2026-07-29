@@ -1,23 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  Award,
   BarChart3,
+  Bell,
   BookOpen,
-  Calendar as CalendarIcon,
-  FileText,
+  CalendarClock,
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
   LayoutDashboard,
   ListTree,
   LogOut,
   Menu,
   Moon,
-  Repeat,
-  Rocket,
+  RotateCcw,
   Settings as SettingsIcon,
   Sun,
+  Trophy,
   UserRound,
-  Wand2,
   X,
 } from 'lucide-react'
 
@@ -40,16 +41,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+/*
+ * Icons name the thing they lead to. The previous set had a rocket for a
+ * revision app and a magic wand for the timetable, both of which say "generated
+ * template" rather than "study tool".
+ */
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/planner', label: 'Study Planner', icon: Wand2 },
+  // A timetable with times on it, not a magic trick.
+  { to: '/planner', label: 'Study Planner', icon: CalendarClock },
   { to: '/subjects', label: 'Subjects', icon: BookOpen },
   { to: '/syllabus', label: 'Syllabus', icon: ListTree },
-  { to: '/calendar', label: 'Calendar', icon: CalendarIcon },
-  { to: '/revision', label: 'Revision', icon: Repeat },
-  { to: '/past-papers', label: 'Past Papers', icon: FileText },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+  // Spaced repetition: coming back round to something.
+  { to: '/revision', label: 'Revision', icon: RotateCcw },
+  { to: '/past-papers', label: 'Past Papers', icon: ClipboardList },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/achievements', label: 'Achievements', icon: Award },
+  { to: '/achievements', label: 'Achievements', icon: Trophy },
   { to: '/profile', label: 'Profile', icon: UserRound },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ]
@@ -57,11 +65,11 @@ const NAV_ITEMS = [
 function Brand({ className }) {
   return (
     <div className={cn('flex items-center gap-2.5 px-1', className)}>
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-glow">
-        <Rocket className="size-4.5" />
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+        <GraduationCap className="size-5" />
       </span>
       <span className="font-display text-lg font-bold tracking-tight">
-        StudyPilot <span className="text-gradient">AI</span>
+        StudyPilot <span className="text-primary">AI</span>
       </span>
     </div>
   )
@@ -77,9 +85,11 @@ function NavLinks({ onNavigate }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors',
+              // min-h-11 keeps every row a comfortable 44px tap target.
+              'flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors',
               'hover:bg-muted hover:text-foreground',
-              isActive && 'bg-primary/10 font-semibold text-primary hover:bg-primary/10 hover:text-primary',
+              isActive &&
+                'bg-primary/10 font-semibold text-primary hover:bg-primary/10 hover:text-primary',
             )
           }
         >
@@ -133,21 +143,9 @@ function NotificationsBell() {
     <DropdownMenu onOpenChange={(open) => open && !loaded && load()}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-4.5"
-          >
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-          </svg>
+          <Bell className="size-4.5" />
           {unread > 0 && (
-            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-rose-500 ring-2 ring-card" />
+            <span className="absolute right-2 top-2 size-2 rounded-full bg-accent ring-2 ring-background" />
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -200,12 +198,58 @@ function AppShellLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const drawerRef = useRef(null)
+  const closeDrawer = useCallback(() => setMobileOpen(false), [])
 
   useEffect(() => setMobileOpen(false), [location.pathname])
 
+  // Escape closes the drawer, and while it is open the page behind must not
+  // scroll: on a phone, scrolling the body under an open drawer is what makes
+  // it feel like you are stuck in it.
+  useEffect(() => {
+    if (!mobileOpen) return undefined
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closeDrawer()
+    }
+    window.addEventListener('keydown', onKeyDown)
+
+    const { overflow, touchAction } = document.body.style
+    document.body.style.overflow = 'hidden'
+    document.body.style.touchAction = 'none'
+
+    // Move focus into the drawer so the next Tab lands on its links rather
+    // than continuing down the page behind it.
+    drawerRef.current?.focus()
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = overflow
+      document.body.style.touchAction = touchAction
+    }
+  }, [mobileOpen, closeDrawer])
+
+  // Keep the tab ring inside the drawer while it is open.
+  const onDrawerKeyDown = (event) => {
+    if (event.key !== 'Tab') return
+    const focusable = drawerRef.current?.querySelectorAll(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    if (!focusable?.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   const handleSignOut = () => {
     signOut()
-    toast.info('Signed out', 'See you back soon!')
+    toast.info('Signed out', 'See you back soon')
     navigate('/', { replace: true })
   }
 
@@ -236,35 +280,47 @@ function AppShellLayout() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
+              onClick={closeDrawer}
+              // Labelled and clickable: tapping anywhere outside the drawer is
+              // the gesture most people try first.
+              role="button"
+              tabIndex={-1}
+              aria-label="Close menu"
+              className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
             />
             <motion.aside
+              ref={drawerRef}
+              tabIndex={-1}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Main menu"
+              onKeyDown={onDrawerKeyDown}
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 340, damping: 34 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-card shadow-lift lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-[min(19rem,85vw)] flex-col bg-card shadow-lift outline-none lg:hidden"
             >
-              <div className="flex h-16 items-center justify-between border-b border-border/70 px-4">
+              <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3">
                 <Brand />
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={closeDrawer}
                   aria-label="Close menu"
+                  className="shrink-0"
                 >
                   <X className="size-5" />
                 </Button>
               </div>
-              <NavLinks onNavigate={() => setMobileOpen(false)} />
-              <div className="border-t border-border/70 p-3">
+              <NavLinks onNavigate={closeDrawer} />
+              <div className="shrink-0 border-t border-border/70 p-3">
                 <button
                   onClick={handleSignOut}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <LogOut className="size-4.5" />
-                  Logout
+                  Log out
                 </button>
               </div>
             </motion.aside>

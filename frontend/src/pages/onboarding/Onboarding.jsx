@@ -298,7 +298,7 @@ export default function Onboarding() {
               transition={{ duration: 0.4 }}
               className="rounded-3xl border border-border/70 bg-card/95 p-8 text-center shadow-lift backdrop-blur sm:p-12"
             >
-              <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-glow">
+              <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-primary text-primary-foreground">
                 <Sparkles className="size-8" />
               </span>
               <h1 className="mt-6 font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -309,7 +309,7 @@ export default function Onboarding() {
               <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground sm:text-base">
                 {isReview
                   ? 'Your profile changed, so I need to run back through these questions. ' +
-                    'Everything is filled in with your current answers — change what you ' +
+                    'Everything is filled in with your current answers. Change what you ' +
                     'like and I will rebuild your subjects, timetable and plan around them.'
                   : meta?.intro?.subtitle ||
                     "I'm going to ask a few questions to create your personalised study plan."}
@@ -649,7 +649,7 @@ function ExamTable({ rows, onChange, subjects, examBoards }) {
     <div className="space-y-3">
       {rows.length === 0 && (
         <p className="rounded-xl bg-muted/60 px-4 py-5 text-center text-sm text-muted-foreground">
-          No exams added yet — you can skip this and add exams later.
+          No exams yet. You can skip this and add them later.
         </p>
       )}
 

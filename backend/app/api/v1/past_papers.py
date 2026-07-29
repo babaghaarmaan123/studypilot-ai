@@ -105,7 +105,7 @@ def create_paper(
     log_activity(
         db,
         user,
-        f"Logged {paper.title} — {percentage}%",
+        f"Logged {paper.title} at {percentage}%",
         kind="past_paper",
         icon="file-text",
     )
@@ -263,7 +263,7 @@ def score_paper(
         log_activity(
             db,
             user,
-            f"Scored {paper.title} — {paper.percentage}%",
+            f"Scored {paper.title} at {paper.percentage}%",
             kind="past_paper",
             icon="file-text",
         )

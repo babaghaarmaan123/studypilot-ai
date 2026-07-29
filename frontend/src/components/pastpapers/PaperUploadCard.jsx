@@ -86,8 +86,8 @@ export function PaperUploadCard({ subjects, uploading, onUpload }) {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {uploading
-                ? 'Picking up the subject, board, year and total marks from the cover page.'
-                : 'Or click to browse. Add your score once it’s marked — no forms up front.'}
+                ? 'Reading the subject, board, year and total marks off the cover page.'
+                : 'Or click to browse. Add your score once it is marked.'}
             </p>
           </div>
 

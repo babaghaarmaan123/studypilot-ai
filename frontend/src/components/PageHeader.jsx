@@ -16,7 +16,7 @@ export function PageHeader({ title, description, actions, icon: Icon, className 
     >
       <div className="flex items-start gap-3">
         {Icon && (
-          <span className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-500/15 text-primary">
+          <span className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
             <Icon className="size-5" />
           </span>
         )}

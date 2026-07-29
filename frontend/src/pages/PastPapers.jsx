@@ -109,7 +109,7 @@ export default function PastPapers() {
         await refreshAll()
         toast.success(
           added === 1 ? 'Paper uploaded' : `${added} papers uploaded`,
-          'Add your marks below once it’s been marked.',
+          'Add your marks below once it is marked.',
         )
       }
     } finally {
@@ -122,7 +122,7 @@ export default function PastPapers() {
       try {
         await api.pastPapers.score(paper.id, body)
         await refreshAll()
-        toast.success('Score saved — nice work')
+        toast.success('Score saved')
       } catch (err) {
         toast.error('Could not save that score', err instanceof ApiError ? err.message : undefined)
       }
@@ -151,7 +151,7 @@ export default function PastPapers() {
         }
         setDialogOpen(false)
         await refreshAll()
-        toast.success(editing ? 'Past paper updated' : 'Past paper logged — nice work')
+        toast.success(editing ? 'Past paper updated' : 'Past paper logged')
       } catch (err) {
         toast.error('Could not save that paper', err instanceof ApiError ? err.message : undefined)
       }

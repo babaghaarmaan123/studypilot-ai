@@ -336,7 +336,7 @@ def generate_plan(
             for exam in exams_by_day[day]:
                 day_blocks.append(
                     {
-                        "title": f"Final review — {exam.title}",
+                        "title": f"Final review: {exam.title}",
                         "description": (
                             f"Light recap before your {exam.exam_time or '09:00'} exam. "
                             "Formulae, definitions and past mistakes only."
@@ -361,7 +361,7 @@ def generate_plan(
                 break
             day_blocks.append(
                 {
-                    "title": f"Revision — {revision.topic.name}",
+                    "title": f"Revision: {revision.topic.name}",
                     "description": (
                         f"Spaced repetition ({revision.interval_label}) for "
                         f"{revision.subject.name}. Recall first, then check."
@@ -398,7 +398,7 @@ def generate_plan(
             subject = paper_subjects[(offset // 7) % len(paper_subjects)]
             day_blocks.append(
                 {
-                    "title": f"Past paper — {subject.name}",
+                    "title": f"Past paper: {subject.name}",
                     "description": "Full paper under timed conditions, then mark it "
                     "against the mark scheme and log your score.",
                     "minutes": 90,
@@ -428,7 +428,7 @@ def generate_plan(
 
             day_blocks.append(
                 {
-                    "title": f"{queue.subject.name} — {topic.name}{suffix}",
+                    "title": f"{queue.subject.name}: {topic.name}{suffix}",
                     "description": _study_description(queue.subject, topic, part),
                     "minutes": size,
                     "kind": "study",
@@ -453,7 +453,7 @@ def generate_plan(
 def _study_description(subject: Subject, topic: Topic, part: int = 1) -> str:
     if part > 1:
         return (
-            f"{subject.name} · {topic.name}. Continuing from your last block — "
+            f"{subject.name} · {topic.name}. Continuing from your last block. "
             "start by recapping what you covered, then push further."
         )
     difficulty_note = {

@@ -127,7 +127,7 @@ def apply(db: Session, user: User, payload: OnboardingSubmit) -> MentorSummary:
     log_activity(
         db,
         user,
-        f"Completed onboarding — {len(created_subjects)} subjects and a "
+        f"Completed onboarding: {len(created_subjects)} subjects and a "
         f"{plan.horizon_days}-day plan created{dropped}",
         kind="onboarding",
         icon="sparkles",

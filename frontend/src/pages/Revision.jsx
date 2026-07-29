@@ -225,7 +225,7 @@ export default function Revision() {
           <DialogHeader>
             <DialogTitle>How well did you recall it?</DialogTitle>
             <DialogDescription>
-              {ratingTarget?.topic_name} — rate 1 to 5. A low score books a quick retry in two
+              {ratingTarget?.topic_name}. Rate 1 to 5. A low score books a quick retry in two
               days and reopens the topic.
             </DialogDescription>
           </DialogHeader>

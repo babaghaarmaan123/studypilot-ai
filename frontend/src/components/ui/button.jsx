@@ -10,26 +10,31 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Flat fills. A gradient on a button is the single loudest tell of a
+        // generated template, and it costs contrast at the light end.
         default:
-          'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-soft hover:shadow-glow hover:brightness-110',
+          'bg-primary text-primary-foreground shadow-soft hover:bg-primary/90',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-soft',
         outline:
           'border border-border bg-card text-foreground shadow-soft hover:bg-muted',
         ghost: 'text-foreground hover:bg-muted',
         subtle: 'bg-primary/10 text-primary hover:bg-primary/15',
+        accent: 'bg-accent text-accent-foreground shadow-soft hover:bg-accent/90',
         destructive:
-          'bg-destructive text-destructive-foreground shadow-soft hover:brightness-110',
-        success: 'bg-success text-success-foreground shadow-soft hover:brightness-110',
+          'bg-destructive text-destructive-foreground shadow-soft hover:bg-destructive/90',
+        success: 'bg-success text-success-foreground shadow-soft hover:bg-success/90',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-10 px-4 py-2',
+        // `default` and up clear 44px so primary actions are comfortable to tap;
+        // sm/xs/icon-sm stay compact for dense rows and toolbars.
+        default: 'h-11 px-4 py-2',
         sm: 'h-9 rounded-lg px-3 text-[13px]',
         xs: 'h-8 rounded-lg px-2.5 text-xs [&_svg]:size-3.5',
-        lg: 'h-12 rounded-2xl px-7 text-base',
-        icon: 'size-10',
-        'icon-sm': 'size-8 rounded-lg [&_svg]:size-4',
+        lg: 'h-12 rounded-xl px-7 text-base',
+        icon: 'size-11',
+        'icon-sm': 'size-9 rounded-lg [&_svg]:size-4',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

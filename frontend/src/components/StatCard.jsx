@@ -5,13 +5,19 @@ import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 
+/*
+ * Flat tinted chips instead of gradient washes. Tone names are kept so the
+ * dozens of call sites do not change, but they now map onto the theme's own
+ * colours rather than six unrelated Tailwind ramps.
+ */
 const TONES = {
-  indigo: 'from-indigo-500/15 to-violet-500/10 text-indigo-600 dark:text-indigo-300',
-  emerald: 'from-emerald-500/15 to-teal-500/10 text-emerald-600 dark:text-emerald-300',
-  amber: 'from-amber-500/15 to-orange-500/10 text-amber-600 dark:text-amber-300',
-  rose: 'from-rose-500/15 to-pink-500/10 text-rose-600 dark:text-rose-300',
-  sky: 'from-sky-500/15 to-cyan-500/10 text-sky-600 dark:text-sky-300',
-  violet: 'from-violet-500/15 to-fuchsia-500/10 text-violet-600 dark:text-violet-300',
+  indigo: 'bg-primary/10 text-primary',
+  primary: 'bg-primary/10 text-primary',
+  emerald: 'bg-success/10 text-success',
+  amber: 'bg-accent/15 text-accent-foreground dark:text-accent',
+  rose: 'bg-destructive/10 text-destructive',
+  sky: 'bg-secondary text-secondary-foreground',
+  violet: 'bg-primary/10 text-primary',
 }
 
 export function StatCard({
@@ -32,30 +38,32 @@ export function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Card className={cn('card-hover h-full p-5', className)}>
-        <div className="flex items-start justify-between gap-3">
+      {/* Scales down to roughly 160px wide so these can sit two-up on a phone
+          without the label wrapping or the number clipping. */}
+      <Card className={cn('card-hover h-full p-3.5 sm:p-5', className)}>
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs">
               {label}
             </p>
-            <p className="mt-1.5 font-display text-2xl font-bold tabular-nums sm:text-[26px]">
+            <p className="mt-1 font-display text-xl font-bold tabular-nums sm:mt-1.5 sm:text-[26px]">
               {value}
             </p>
           </div>
           {Icon && (
             <span
               className={cn(
-                'grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br',
-                TONES[tone] || TONES.indigo,
+                'grid size-8 shrink-0 place-items-center rounded-lg sm:size-10 sm:rounded-xl',
+                TONES[tone] || TONES.primary,
               )}
             >
-              <Icon className="size-5" />
+              <Icon className="size-4 sm:size-5" />
             </span>
           )}
         </div>
 
         {typeof progress === 'number' && (
-          <Progress value={progress} className="mt-4 h-1.5" />
+          <Progress value={progress} className="mt-3 h-1.5 sm:mt-4" />
         )}
 
         {(hint || typeof trend === 'number') && (

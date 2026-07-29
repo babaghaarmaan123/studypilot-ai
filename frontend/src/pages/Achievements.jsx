@@ -91,7 +91,7 @@ export default function Achievements() {
                       className={cn(
                         'grid size-12 shrink-0 place-items-center rounded-2xl',
                         achievement.unlocked
-                          ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-glow'
+                          ? 'bg-primary text-primary-foreground shadow-glow'
                           : 'bg-muted text-muted-foreground',
                       )}
                     >

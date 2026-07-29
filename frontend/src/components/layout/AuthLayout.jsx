@@ -43,7 +43,7 @@ export function AuthLayout({ title, subtitle, children, footer, wide = false }) 
 
         <div className="rounded-3xl border border-border/70 bg-card/95 p-7 shadow-lift backdrop-blur sm:p-9">
           <div className="mb-7 flex flex-col items-center text-center">
-            <span className="mb-4 grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-glow">
+            <span className="mb-4 grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground">
               <Rocket className="size-5.5" />
             </span>
             <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>

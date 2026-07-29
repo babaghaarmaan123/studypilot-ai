@@ -64,10 +64,12 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
-        soft: '0 1px 2px rgba(16,24,40,.04), 0 8px 24px -12px rgba(16,24,40,.12)',
-        card: '0 1px 3px rgba(16,24,40,.05), 0 12px 32px -16px rgba(16,24,40,.18)',
-        lift: '0 2px 6px rgba(16,24,40,.06), 0 24px 48px -24px rgba(16,24,40,.28)',
-        glow: '0 0 0 1px rgba(99,102,241,.16), 0 18px 40px -18px rgba(99,102,241,.55)',
+        // Neutral slate shadows. `glow` is now a restrained teal ring used for
+        // emphasis, not the indigo bloom that shouted "template".
+        soft: '0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.10)',
+        card: '0 1px 3px rgba(15,23,42,.05), 0 12px 32px -16px rgba(15,23,42,.16)',
+        lift: '0 2px 6px rgba(15,23,42,.06), 0 24px 48px -24px rgba(15,23,42,.24)',
+        glow: '0 0 0 1px rgba(13,148,136,.22), 0 10px 28px -14px rgba(13,148,136,.35)',
       },
       backgroundImage: {
         'grid-light':

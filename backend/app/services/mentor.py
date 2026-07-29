@@ -98,7 +98,7 @@ def build_summary(
     weak = [s.name for s in user.subjects if s.is_weak and not s.is_archived]
     if weak:
         focus.append(
-            f"Extra time is reserved for {_list_phrase(weak)} — these look like your "
+            f"Extra time is reserved for {_list_phrase(weak)}, which look like your "
             "weakest areas right now."
         )
 
@@ -125,7 +125,7 @@ def build_summary(
     if plan is not None:
         focus.append(
             f"The plan covers {plan.horizon_days} days and "
-            f"{plan.total_hours:.0f} hours of scheduled work — regenerate it any time "
+            f"{plan.total_hours:.0f} hours of scheduled work. Regenerate it any time "
             "your timetable changes."
         )
 

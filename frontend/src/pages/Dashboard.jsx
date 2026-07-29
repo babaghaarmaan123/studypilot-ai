@@ -1,23 +1,24 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   BarChart3,
   BookOpen,
-  Calendar as CalendarIcon,
+  CalendarDays,
+  CalendarPlus,
+  ClipboardList,
   Clock,
-  FileText,
   Flame,
+  LayoutDashboard,
   ListChecks,
-  Repeat,
+  RotateCcw,
   Target,
   TrendingUp,
-  Wand2,
 } from 'lucide-react'
 
 import { useStudySession } from '@/context/StudySessionContext'
 import { useToast } from '@/context/ToastContext'
-import { useFetch, usePending } from '@/hooks/useFetch'
+import { useFetch } from '@/hooks/useFetch'
 import api, { ApiError } from '@/lib/api'
 import { formatMinutes, iconFor, pluralise } from '@/lib/utils'
 
@@ -32,18 +33,18 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList, SkeletonStats } from '@/components/ui/skeleton'
 
 const QUICK_ACTIONS = [
-  { to: '/planner', label: 'Generate New Plan', icon: Wand2, tone: 'indigo' },
-  { to: '/revision', label: 'Revision Planner', icon: Repeat, tone: 'emerald' },
-  { to: '/calendar', label: 'Calendar', icon: CalendarIcon, tone: 'sky' },
-  { to: '/past-papers', label: 'Past Papers', icon: FileText, tone: 'amber' },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3, tone: 'violet' },
+  { to: '/planner?generate=1', label: 'Generate a plan', icon: CalendarPlus, tone: 'primary' },
+  { to: '/revision', label: 'Revision', icon: RotateCcw, tone: 'emerald' },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays, tone: 'sky' },
+  { to: '/past-papers', label: 'Past Papers', icon: ClipboardList, tone: 'amber' },
+  { to: '/analytics', label: 'Analytics', icon: BarChart3, tone: 'primary' },
 ]
 
 export default function Dashboard() {
   const { toast } = useToast()
+  const navigate = useNavigate()
   const { startTimer } = useStudySession()
   const { data, loading, error, reload } = useFetch(() => api.dashboard(), [])
-  const [pending, wrap] = usePending()
   const [busySession, setBusySession] = useState(null)
 
   const updateSession = async (session, action) => {
@@ -61,16 +62,10 @@ export default function Dashboard() {
     }
   }
 
-  const generatePlan = () =>
-    wrap(async () => {
-      try {
-        await api.plans.generate({})
-        toast.success('New study plan generated')
-        reload()
-      } catch (err) {
-        toast.error('Could not generate a plan', err instanceof ApiError ? err.message : undefined)
-      }
-    })
+  // Generating from here used to leave the student on the dashboard with a
+  // toast and no visible plan. The planner is the page built to display it, so
+  // the work happens there and the output is on screen when it finishes.
+  const generatePlan = () => navigate('/planner?generate=1')
 
   if (error) {
     return (
@@ -90,12 +85,12 @@ export default function Dashboard() {
         description={
           data?.mentor_summary
             ? data.mentor_summary
-            : 'Your personalised study command centre.'
+            : 'Generate a plan and your week fills itself in.'
         }
-        icon={Wand2}
+        icon={LayoutDashboard}
         actions={
-          <Button loading={pending} onClick={generatePlan}>
-            <Wand2 /> Generate New Plan
+          <Button onClick={generatePlan}>
+            <CalendarPlus /> Generate a plan
           </Button>
         }
       />
@@ -103,7 +98,7 @@ export default function Dashboard() {
       {loading || !data ? (
         <SkeletonStats />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <StatCard
             label="Study streak"
             value={pluralise(data.streak_current, 'day')}
@@ -119,7 +114,7 @@ export default function Dashboard() {
             )}`}
             progress={data.todays_progress}
             icon={Target}
-            tone="indigo"
+            tone="primary"
             delay={0.05}
           />
           <StatCard
@@ -175,12 +170,12 @@ export default function Dashboard() {
               ))
             ) : (
               <EmptyState
-                icon={Wand2}
+                icon={CalendarPlus}
                 title="Nothing scheduled for today"
                 description="Generate a plan and StudyPilot will fill your day automatically."
                 action={
-                  <Button onClick={generatePlan} loading={pending}>
-                    <Wand2 /> Generate a plan
+                  <Button onClick={generatePlan}>
+                    <CalendarPlus /> Generate a plan
                   </Button>
                 }
               />
@@ -192,7 +187,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="size-4.5 text-primary" /> Upcoming exams
+                <CalendarDays className="size-4.5 text-primary" /> Upcoming exams
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -251,7 +246,7 @@ export default function Dashboard() {
             {data?.weak_subjects?.length > 0 && (
               <div className="mt-6 border-t border-border/60 pt-5">
                 <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Weak subjects — needs attention
+                  Needs attention
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {data.weak_subjects.map((s) => (
@@ -309,7 +304,7 @@ export default function Dashboard() {
               </ol>
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                Nothing here yet — get studying!
+                Nothing logged yet.
               </p>
             )}
           </CardContent>

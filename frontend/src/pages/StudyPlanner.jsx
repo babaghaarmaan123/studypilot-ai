@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Wand2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 import { useStudySession } from '@/context/StudySessionContext'
 import { useToast } from '@/context/ToastContext'
@@ -9,6 +10,8 @@ import { addDays, formatDate, formatHours, startOfWeek, toISODate } from '@/lib/
 
 import { PageHeader } from '@/components/PageHeader'
 import { SessionCard } from '@/components/SessionCard'
+import { GeneratedPlan } from '@/components/planner/GeneratedPlan'
+import { PlanBuildingPanel } from '@/components/planner/PlanBuildingPanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -46,11 +49,32 @@ const EMPTY_SESSION = {
 export default function StudyPlanner() {
   const { toast } = useToast()
   const { startTimer, refresh: refreshReminders } = useStudySession()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [weekStart, setWeekStart] = useState(() => toISODate(startOfWeek(new Date())))
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_SESSION)
   const [genPending, wrapGen] = usePending()
   const [formPending, wrapForm] = usePending()
+  //: The plan returned by the last generation, shown in full below the header.
+  const [plan, setPlan] = useState(null)
+  const [tab, setTab] = useState('today')
+  const resultRef = useRef(null)
+
+  /*
+   * Generation takes about 80ms against a warm local server and tens of seconds
+   * against a sleeping free-tier one. Showing the progress panel immediately
+   * would make the fast case flicker, so it only appears once the request has
+   * been running long enough to be worth explaining.
+   */
+  const [showProgress, setShowProgress] = useState(false)
+  useEffect(() => {
+    if (!genPending) {
+      setShowProgress(false)
+      return undefined
+    }
+    const timer = setTimeout(() => setShowProgress(true), 250)
+    return () => clearTimeout(timer)
+  }, [genPending])
 
   const { data: subjects } = useFetch(() => api.subjects.list(), [])
   const {
@@ -85,18 +109,47 @@ export default function StudyPlanner() {
     }
   }
 
-  const generate = () =>
-    wrapGen(async () => {
-      try {
-        await api.plans.generate({})
-        // Refresh before the toast so the new timetable is on screen by the
-        // time the student is told it exists.
-        await refreshAll()
-        toast.success('New 28-day plan generated')
-      } catch (err) {
-        toast.error('Could not generate a plan', err instanceof ApiError ? err.message : undefined)
-      }
-    })
+  const generate = useCallback(
+    () =>
+      wrapGen(async () => {
+        setPlan(null)
+        // Scroll to the panel that has just replaced the plan area, so the
+        // progress is visible immediately rather than only the button spinner.
+        requestAnimationFrame(() =>
+          resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        )
+        try {
+          const generated = await api.plans.generate({})
+          setPlan(generated)
+          await refreshAll()
+          // Scroll again once the real output has laid out, since it is much
+          // taller than the progress panel it replaced.
+          requestAnimationFrame(() =>
+            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+          )
+          toast.success(
+            'Plan ready',
+            `${generated.sessions?.length ?? 0} sessions across ${generated.horizon_days} days`,
+          )
+        } catch (err) {
+          toast.error(
+            'Could not generate a plan',
+            err instanceof ApiError ? err.message : undefined,
+          )
+        }
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [wrapGen],
+  )
+
+  // The dashboard's generate button links here with ?generate=1 so the output
+  // always appears on the page built to show it.
+  useEffect(() => {
+    if (searchParams.get('generate') !== '1') return
+    setSearchParams({}, { replace: true })
+    generate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const submitSession = () =>
     wrapForm(async () => {
@@ -122,12 +175,12 @@ export default function StudyPlanner() {
     <div className="space-y-6">
       <PageHeader
         title="Study Planner"
-        description="Your AI-generated timetable — today, this week, and everything in between."
-        icon={Wand2}
+        description="Your timetable for today, this week and the month ahead."
+        icon={CalendarClock}
         actions={
           <>
             <Button loading={genPending} onClick={generate}>
-              <Wand2 /> Generate new plan
+              <CalendarPlus /> Generate new plan
             </Button>
             <Button variant="subtle" onClick={() => setDialogOpen(true)}>
               <Plus /> Add session
@@ -136,7 +189,17 @@ export default function StudyPlanner() {
         }
       />
 
-      <Tabs defaultValue="today">
+      {/* Scroll target for a generation: the progress panel and then the plan
+          itself both land here, directly under the button that started it. */}
+      <div ref={resultRef} className="scroll-mt-20">
+        {showProgress ? (
+          <PlanBuildingPanel />
+        ) : (
+          !genPending && plan && <GeneratedPlan plan={plan} onOpenWeek={() => setTab('week')} />
+        )}
+      </div>
+
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="today">Today</TabsTrigger>
           <TabsTrigger value="week">This Week</TabsTrigger>
@@ -160,12 +223,12 @@ export default function StudyPlanner() {
             ))
           ) : (
             <EmptyState
-              icon={Wand2}
+              icon={CalendarClock}
               title="Nothing scheduled today"
-              description="Generate a plan or add a session manually."
+              description="Generate a plan, or add a session yourself."
               action={
                 <Button onClick={generate} loading={genPending}>
-                  <Wand2 /> Generate a plan
+                  <CalendarPlus /> Generate a plan
                 </Button>
               }
             />
@@ -183,7 +246,7 @@ export default function StudyPlanner() {
             </Button>
             <div className="text-center">
               <p className="text-sm font-semibold">
-                {week ? `${formatDate(week.week_start)} – ${formatDate(week.week_end)}` : '—'}
+                {week ? `${formatDate(week.week_start)} to ${formatDate(week.week_end)}` : '-'}
               </p>
               {week && (
                 <p className="text-xs text-muted-foreground">

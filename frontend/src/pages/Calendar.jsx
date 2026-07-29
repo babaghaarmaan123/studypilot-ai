@@ -100,13 +100,19 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <PageHeader
         title="Calendar"
-        description="Every study session, revision and exam in one monthly view."
+        description="Every session, revision and exam in one month view."
         icon={CalendarIcon}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card>
-          <CardContent className="pt-6">
+      {/* min-w-0 on the grid children: a grid track is auto-sized by default,
+          so anything inside with an intrinsic width would widen the column
+          rather than being made to fit. */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Card className="min-w-0">
+          {/* Tighter padding on a phone: at 375px, every 4px of card padding
+              costs half a pixel off each of the seven columns, and the tiles
+              have to stay at least 44px wide to be comfortably tappable. */}
+          <CardContent className="p-2 pt-3 sm:p-6">
             {loading && !month ? (
               <Skeleton className="h-[380px] w-full rounded-2xl" />
             ) : (
@@ -116,6 +122,14 @@ export default function CalendarPage() {
                 onActiveStartDateChange={({ activeStartDate }) =>
                   activeStartDate && setActiveDate(activeStartDate)
                 }
+                // Monday-first, and short weekday initials so seven columns fit
+                // a 375px screen without the labels being clipped.
+                locale="en-GB"
+                formatShortWeekday={(_locale, date) =>
+                  ['S', 'M', 'T', 'W', 'T', 'F', 'S'][date.getDay()]
+                }
+                prev2Label={null}
+                next2Label={null}
                 tileContent={({ date, view }) => {
                   if (view !== 'month') return null
                   const day = month?.find((d) => d.date === toISODate(date))
@@ -123,7 +137,7 @@ export default function CalendarPage() {
                   if (!tone) return null
                   return (
                     <span
-                      className={`cal-dot pointer-events-none absolute bottom-1.5 left-1/2 size-1.5 -translate-x-1/2 rounded-full ${DOT_TONE[tone]}`}
+                      className={`cal-dot pointer-events-none absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full ${DOT_TONE[tone]}`}
                     />
                   )
                 }}
@@ -163,7 +177,7 @@ export default function CalendarPage() {
               <EmptyState
                 icon={CalendarIcon}
                 title="Nothing scheduled"
-                description="Free day — or add a session yourself."
+                description="A free day. Add a session if you want one."
                 className="py-8"
               />
             )}

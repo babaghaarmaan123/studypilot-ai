@@ -191,7 +191,7 @@ export function SyllabusTree({ subject, setSubject }) {
             : u,
         ),
       }))
-      if (!done) toast.success(`Nice work — "${topic.name}" marked complete`)
+      if (!done) toast.success(`Marked "${topic.name}" complete`)
     } catch (err) {
       toast.error('Could not update topic', err instanceof ApiError ? err.message : undefined)
     }

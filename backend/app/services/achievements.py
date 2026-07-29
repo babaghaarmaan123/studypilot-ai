@@ -223,7 +223,7 @@ def evaluate(db: Session, user: User) -> List[Achievement]:
             notify(
                 db,
                 user,
-                title=f"Achievement unlocked — {definition.name}",
+                title=f"Achievement unlocked: {definition.name}",
                 message=f"{definition.description} +{definition.xp} XP",
                 kind="achievement",
                 link="/app/achievements",

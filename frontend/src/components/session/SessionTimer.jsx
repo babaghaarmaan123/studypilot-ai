@@ -52,7 +52,7 @@ export function SessionTimer() {
         await api.plans.completeSession(session.id)
         dismissAlarm()
         await refresh()
-        toast.success('Session complete — nice work', session.title)
+        toast.success('Session complete', session.title)
       } catch (err) {
         toast.error(
           'Could not mark that complete',
@@ -119,7 +119,7 @@ export function SessionTimer() {
               </div>
               <div className="h-1 bg-muted">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-600 transition-[width] duration-500"
+                  className="h-full bg-primary transition-[width] duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -140,7 +140,7 @@ export function SessionTimer() {
             </motion.span>
             <DialogTitle>Time’s up</DialogTitle>
             <DialogDescription>
-              {timer?.session?.title} has reached the end of its scheduled slot.
+              {timer?.session?.title} has reached the end of its slot.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:flex-wrap">
