@@ -96,7 +96,7 @@ The repository contains a [Blueprint](render.yaml), so Render creates the
 database and the API together:
 
 1. Render dashboard → **New** → **Blueprint** → select this repository.
-2. Apply. It provisions `studypilot-db` (PostgreSQL) and `studypilot-api`,
+2. Apply. It provisions `studypilot-db` (PostgreSQL) and `studypilot-ai-api`,
    generating `SECRET_KEY` itself and wiring `DATABASE_URL` between them.
 3. After the frontend is live, set `FRONTEND_URL` on the service to its URL.
    Only needed for a custom domain — `*.vercel.app` is already allowed by a
