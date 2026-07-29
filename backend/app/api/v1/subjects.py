@@ -150,7 +150,9 @@ def update_subject(
 def delete_subject(subject_id: int, user: CurrentUser, db: DbSession) -> Message:
     subject = _get_subject(db, user, subject_id)
     name = subject.name
-    db.delete(subject)
+    # Routed through the service so timetabled sessions go too — they reference
+    # the subject without an ORM relationship back from it.
+    subject_service.delete_subject(db, subject)
     log_activity(db, user, f"Deleted {name}", kind="subject", icon="trash-2")
     db.commit()
     return Message(message=f"{name} deleted.")

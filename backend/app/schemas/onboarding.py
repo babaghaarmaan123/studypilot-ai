@@ -92,6 +92,8 @@ class MentorSummary(BaseModel):
     focus_points: List[str]
     plan_id: Optional[int] = None
     subjects_created: int = 0
+    #: Subjects dropped because they were not in the question 4 answer.
+    subjects_removed: int = 0
     topics_created: int = 0
     sessions_created: int = 0
     revisions_created: int = 0

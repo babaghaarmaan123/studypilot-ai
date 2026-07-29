@@ -1,12 +1,86 @@
-"""Subject creation and syllabus seeding."""
+"""Subject creation, syllabus seeding and deletion."""
 
-from typing import Optional
+from typing import Iterable, List, Optional
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.data import syllabus as syllabus_data
 from app.data.catalog import colour_for_subject
-from app.models import Subject, Topic, Unit, User
+from app.models import StudySession, Subject, Topic, Unit, User
+
+
+def delete_subject(db: Session, subject: Subject) -> None:
+    """Remove a subject and everything hanging off it.
+
+    Units, topics, completions, revisions, exams and past papers all go via
+    relationship cascades. Timetabled sessions do not: `StudySession` points at
+    a subject with a database-level `ON DELETE CASCADE` but has no ORM
+    relationship back from `Subject`, so SQLAlchemy would leave the rows for the
+    database to deal with — and their `subject_id` would still be loaded in this
+    session's identity map. Clearing them here makes the delete behave the same
+    whichever engine is underneath.
+    """
+    db.execute(delete(StudySession).where(StudySession.subject_id == subject.id))
+    db.delete(subject)
+
+
+def delete_subjects(db: Session, subjects: Iterable[Subject]) -> List[str]:
+    """Delete several subjects, returning their names for logging."""
+    removed: List[str] = []
+    for subject in list(subjects):
+        removed.append(subject.name)
+        delete_subject(db, subject)
+    if removed:
+        db.flush()
+    return removed
+
+
+def _forget_deleted_subjects(db: Session, user: User) -> None:
+    """Drop the loaded `user.subjects` collection after deleting from it.
+
+    The session keeps returning the deleted instances otherwise, and touching
+    one raises `InvalidRequestError` — which is exactly what happens next, when
+    the mentor summary walks the student's subjects to describe them.
+    """
+    db.expire(user, ["subjects"])
+
+
+def prune_for_curriculum(db: Session, user: User, curriculum: Optional[str]) -> List[str]:
+    """Delete the student's subjects that belong to a different curriculum.
+
+    A subject with no curriculum recorded is treated as belonging to whatever
+    the student was studying before, so switching course clears it too.
+    """
+    if not curriculum:
+        return []
+    stale = [
+        subject
+        for subject in user.subjects
+        if (subject.curriculum or curriculum) != curriculum
+    ]
+    removed = delete_subjects(db, stale)
+    if removed:
+        _forget_deleted_subjects(db, user)
+    return removed
+
+
+def prune_missing(db: Session, user: User, keep_names: Iterable[str]) -> List[str]:
+    """Delete any subject whose name is not in `keep_names`.
+
+    Used when onboarding is re-run: the answers submitted at question 4 are the
+    full list of subjects the student is studying, so anything absent from it
+    has been dropped.
+    """
+    wanted = {name.strip().lower() for name in keep_names if name and name.strip()}
+    if not wanted:
+        # Never interpret "no answer" as "delete everything".
+        return []
+    stale = [s for s in user.subjects if s.name.strip().lower() not in wanted]
+    removed = delete_subjects(db, stale)
+    if removed:
+        _forget_deleted_subjects(db, user)
+    return removed
 
 
 def seed_syllabus(db: Session, subject: Subject) -> int:

@@ -231,6 +231,12 @@ export default function Profile() {
                     ))}
                   </SelectContent>
                 </Select>
+                {form.curriculum && user.curriculum && form.curriculum !== user.curriculum && (
+                  <p className="mt-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                    Saving removes your {CURRICULUM_LABELS[user.curriculum]} subjects
+                    and their syllabus, sessions and logged past papers.
+                  </p>
+                )}
               </Field>
             </div>
 

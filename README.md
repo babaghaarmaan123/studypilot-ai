@@ -40,6 +40,20 @@ automatically; missing sessions feeds back into the plan.
   your score inline afterwards; unscored papers stay out of the averages.
 - **Analytics** — hours, coverage, streaks, exam readiness, improvement trend.
 
+### Editing your profile
+
+The profile feeds the planner, so saving it does two things beyond storing the
+fields. Both are deliberately destructive, and both are warned about in the UI
+before you commit to them:
+
+- **Changing curriculum deletes the subjects belonging to the old one**, with
+  their syllabus, timetabled sessions, revisions and logged past papers. A GCSE
+  student has no use for A Level modules sitting in their subject list.
+- **Saving sends you back through the ten questions**, pre-filled with your
+  current answers. That is the step that rebuilds subjects, the exam timetable
+  and the plan; question 4 is the complete list of what you study, so anything
+  you deselect there is dropped the same way.
+
 ---
 
 ## Running locally

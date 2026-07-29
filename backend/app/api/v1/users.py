@@ -16,7 +16,8 @@ from app.schemas.auth import (
 )
 from app.schemas.common import Message
 from app.services import mentor
-from app.services.activity import log_activity
+from app.services import subjects as subject_service
+from app.services.activity import log_activity, notify
 from app.services.planner import active_plan
 from app.services.serializers import load_json_list, user_out
 
@@ -54,9 +55,12 @@ _ALLOWED_IMAGE_TYPES = {
         "Partial update — send only the fields you want to change. Setting "
         "`universities` replaces the whole list.\n\n"
         "Changing anything the mentor summary is built from also regenerates "
-        "that summary, so the dashboard cannot keep describing the old profile. "
-        "Note that subjects, the exam timetable and the study plan are **not** "
-        "rebuilt here — re-run onboarding (`POST /onboarding/complete`) for that."
+        "that summary, so the dashboard cannot keep describing the old profile.\n\n"
+        "**Changing `curriculum` deletes the subjects belonging to the old one**, "
+        "along with their syllabus, timetabled sessions, revisions and logged "
+        "past papers — a GCSE student has no use for A Level modules. The exam "
+        "timetable and study plan are rebuilt by re-running onboarding "
+        "(`POST /onboarding/complete`)."
     ),
 )
 def update_profile(payload: ProfileUpdate, user: CurrentUser, db: DbSession) -> UserOut:
@@ -65,6 +69,7 @@ def update_profile(payload: ProfileUpdate, user: CurrentUser, db: DbSession) -> 
     data = payload.model_dump(exclude_unset=True)
     universities = data.pop("universities", None)
     habits = data.pop("study_habits", None)
+    previous_curriculum = user.curriculum
 
     for field, value in data.items():
         if value is not None:
@@ -81,13 +86,45 @@ def update_profile(payload: ProfileUpdate, user: CurrentUser, db: DbSession) -> 
         ]
 
     db.add(user)
+    db.flush()
+
+    # Switching course makes the old course's subjects meaningless, so they go
+    # with it rather than lingering on the Subjects page under the wrong
+    # curriculum. Deliberately destructive: the syllabus, sessions, revisions
+    # and logged past papers for those subjects go too.
+    removed: list[str] = []
+    if user.curriculum and user.curriculum != previous_curriculum:
+        removed = subject_service.prune_for_curriculum(db, user, user.curriculum)
 
     touched_summary = bool(_SUMMARY_FIELDS & set(data)) or habits is not None
     if touched_summary and user.onboarding_completed:
         db.flush()
         mentor.refresh_summary(db, user, active_plan(db, user))
 
-    log_activity(db, user, "Updated your profile", kind="account", icon="user-round")
+    if removed:
+        listed = ", ".join(removed[:6]) + ("…" if len(removed) > 6 else "")
+        log_activity(
+            db,
+            user,
+            f"Switched to {user.curriculum} and removed "
+            f"{len(removed)} subject(s): {listed}",
+            kind="account",
+            icon="trash-2",
+        )
+        notify(
+            db,
+            user,
+            title=f"{len(removed)} subject(s) removed",
+            message=(
+                f"They belonged to your previous curriculum: {listed}. "
+                "Add the subjects you are studying now from the Subjects page."
+            ),
+            kind="warning",
+            link="/subjects",
+        )
+    else:
+        log_activity(db, user, "Updated your profile", kind="account", icon="user-round")
+
     db.commit()
     db.refresh(user)
     return user_out(user)

@@ -404,6 +404,15 @@ export default function Onboarding() {
                 {summary.summary}
               </p>
 
+              {summary.subjects_removed > 0 && (
+                <p className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-left text-sm text-amber-700 dark:text-amber-300">
+                  {summary.subjects_removed} subject
+                  {summary.subjects_removed === 1 ? '' : 's'} you no longer study
+                  {summary.subjects_removed === 1 ? ' was' : ' were'} removed, along
+                  with its syllabus, sessions and logged past papers.
+                </p>
+              )}
+
               {summary.focus_points?.length > 0 && (
                 <ul className="mt-5 space-y-2">
                   {summary.focus_points.map((point) => (

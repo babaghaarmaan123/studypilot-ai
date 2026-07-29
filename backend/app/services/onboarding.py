@@ -44,6 +44,13 @@ def apply(db: Session, user: User, payload: OnboardingSubmit) -> MentorSummary:
     db.flush()
 
     # --- Q4 -> subjects (+ seeded syllabus) --------------------------------
+    # Question 4 is the complete list of what the student is studying, and the
+    # wizard pre-fills it with their current subjects. Anything they removed
+    # from it is a subject they have dropped, so it goes — along with its
+    # syllabus, sessions, revisions and past papers.
+    removed_subjects = subject_service.prune_missing(db, user, payload.subjects)
+    db.refresh(user)
+
     existing = {s.name.lower(): s for s in user.subjects}
     created_subjects: List[Subject] = []
     topics_created = 0
@@ -112,11 +119,16 @@ def apply(db: Session, user: User, payload: OnboardingSubmit) -> MentorSummary:
     db.add(user)
 
     ensure_achievements(db, user)
+    dropped = (
+        f", {len(removed_subjects)} dropped ({', '.join(removed_subjects[:4])})"
+        if removed_subjects
+        else ""
+    )
     log_activity(
         db,
         user,
         f"Completed onboarding — {len(created_subjects)} subjects and a "
-        f"{plan.horizon_days}-day plan created",
+        f"{plan.horizon_days}-day plan created{dropped}",
         kind="onboarding",
         icon="sparkles",
     )
@@ -138,6 +150,7 @@ def apply(db: Session, user: User, payload: OnboardingSubmit) -> MentorSummary:
         focus_points=focus,
         plan_id=plan.id,
         subjects_created=len(created_subjects),
+        subjects_removed=len(removed_subjects),
         topics_created=topics_created,
         sessions_created=session_count,
         revisions_created=revision_count,
