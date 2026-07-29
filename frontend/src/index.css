@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 50% 99%;
+    --foreground: 224 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 40% 12%;
+
+    --primary: 243 75% 62%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 243 90% 96%;
+
+    --secondary: 240 24% 96%;
+    --secondary-foreground: 224 32% 22%;
+
+    --muted: 240 22% 96%;
+    --muted-foreground: 224 12% 46%;
+
+    --accent: 268 80% 96%;
+    --accent-foreground: 268 60% 32%;
+
+    --destructive: 0 78% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 158 68% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 34 94% 48%;
+    --warning-foreground: 24 60% 14%;
+
+    --border: 240 20% 91%;
+    --input: 240 20% 91%;
+    --ring: 243 75% 62%;
+
+    --radius: 0.85rem;
+  }
+
+  .dark {
+    --background: 226 40% 7%;
+    --foreground: 220 30% 96%;
+
+    --card: 226 34% 11%;
+    --card-foreground: 220 30% 96%;
+
+    --popover: 226 34% 11%;
+    --popover-foreground: 220 30% 96%;
+
+    --primary: 243 82% 70%;
+    --primary-foreground: 226 45% 8%;
+    --primary-soft: 243 40% 20%;
+
+    --secondary: 226 26% 17%;
+    --secondary-foreground: 220 30% 94%;
+
+    --muted: 226 26% 16%;
+    --muted-foreground: 222 14% 66%;
+
+    --accent: 268 40% 22%;
+    --accent-foreground: 268 90% 90%;
+
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 158 62% 46%;
+    --success-foreground: 226 45% 8%;
+
+    --warning: 34 92% 58%;
+    --warning-foreground: 26 60% 10%;
+
+    --border: 226 24% 20%;
+    --input: 226 24% 22%;
+    --ring: 243 82% 70%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight;
+  }
+
+  /* Visible, consistent focus ring for keyboard users. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    @apply bg-primary/25;
+  }
+
+  /* Slim, unobtrusive scrollbars. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+    background-clip: content-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/60 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/5;
+  }
+
+  .pastel-mesh {
+    background-image:
+      radial-gradient(at 12% 8%, hsla(243, 90%, 84%, 0.5) 0px, transparent 55%),
+      radial-gradient(at 88% 4%, hsla(280, 90%, 86%, 0.45) 0px, transparent 52%),
+      radial-gradient(at 78% 82%, hsla(190, 90%, 82%, 0.42) 0px, transparent 55%),
+      radial-gradient(at 8% 92%, hsla(330, 92%, 88%, 0.4) 0px, transparent 52%);
+  }
+
+  .dark .pastel-mesh {
+    background-image:
+      radial-gradient(at 12% 8%, hsla(243, 70%, 40%, 0.34) 0px, transparent 55%),
+      radial-gradient(at 88% 4%, hsla(280, 70%, 42%, 0.3) 0px, transparent 52%),
+      radial-gradient(at 78% 82%, hsla(190, 70%, 36%, 0.28) 0px, transparent 55%),
+      radial-gradient(at 8% 92%, hsla(330, 70%, 44%, 0.26) 0px, transparent 52%);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-muted;
+  }
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/55 to-transparent content-[''] dark:via-white/10;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift;
+  }
+}
+
+/* --- react-calendar theming ---------------------------------------------- */
+.react-calendar {
+  @apply w-full border-none bg-transparent font-sans;
+}
+.react-calendar__navigation {
+  @apply mb-2 flex items-center gap-1;
+}
+.react-calendar__navigation button {
+  @apply min-w-10 rounded-lg px-2 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-40;
+}
+.react-calendar__navigation__label {
+  @apply font-display text-base;
+}
+.react-calendar__month-view__weekdays {
+  @apply mb-1 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+}
+.react-calendar__month-view__weekdays abbr {
+  @apply no-underline;
+}
+.react-calendar__tile {
+  @apply relative aspect-square rounded-xl border border-transparent p-1 text-sm text-foreground transition-colors hover:bg-muted;
+}
+.react-calendar__month-view__days__day--neighboringMonth {
+  @apply text-muted-foreground/40;
+}
+.react-calendar__tile--now {
+  @apply border-primary/40 bg-primary/5 font-semibold;
+}
+.react-calendar__tile--active {
+  @apply bg-primary text-primary-foreground hover:bg-primary;
+}
+.react-calendar__tile--active .cal-dot {
+  @apply bg-primary-foreground;
+}

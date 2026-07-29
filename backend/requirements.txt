@@ -1,0 +1,29 @@
+# --- Core framework ---------------------------------------------------------
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.34,<1.0
+# Process manager for production: gunicorn supervises N uvicorn workers and
+# replaces any that die. See Procfile / render.yaml for the start command.
+gunicorn>=23.0,<24.0
+
+# --- Data layer -------------------------------------------------------------
+SQLAlchemy>=2.0.36,<2.1
+alembic>=1.14,<2.0
+# PostgreSQL driver. Harmless on SQLite — the dialect is chosen from
+# DATABASE_URL at runtime, so one image serves both.
+psycopg2-binary>=2.9.10,<3.0
+
+# --- Validation / settings --------------------------------------------------
+pydantic>=2.10,<3.0
+pydantic-settings>=2.7,<3.0
+email-validator>=2.2,<3.0
+
+# --- Auth & security --------------------------------------------------------
+PyJWT>=2.10,<3.0
+bcrypt>=4.2,<5.0
+
+# --- Misc -------------------------------------------------------------------
+python-multipart>=0.0.20
+python-dotenv>=1.0,<2.0
+
+# --- Syllabus & past paper PDF parsing --------------------------------------
+pypdf>=5.1,<6.0
