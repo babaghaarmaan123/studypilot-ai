@@ -116,6 +116,11 @@ the schema is always current before the first request is served.
 `VITE_API_URL` is inlined at build time, so changing it needs a redeploy rather
 than a restart.
 
+`frontend/vercel.json` rewrites every unmatched path to `index.html`. Vercel
+serves real files from `dist/` before applying rewrites, so hashed assets are
+unaffected and the catch-all only picks up React Router paths — without it,
+refreshing on `/planner` returns a 404.
+
 ---
 
 ## Environment variables
