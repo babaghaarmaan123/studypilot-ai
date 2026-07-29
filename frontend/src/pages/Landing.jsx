@@ -41,21 +41,21 @@ const FEATURES = [
     title: 'Revision Planner',
     description:
       'Spaced-repetition checkpoints at 2, 7 and 14 days after every topic, plus a final pass before each exam.',
-    tone: 'from-emerald-500/15 to-teal-500/10 text-emerald-600 dark:text-emerald-300',
+    tone: 'bg-success/10 text-success',
   },
   {
     icon: CalendarClock,
     title: 'Exam Countdown',
     description:
       'Live countdowns for every school and admissions exam, with a readiness score that updates as you study.',
-    tone: 'from-amber-500/15 to-orange-500/10 text-amber-600 dark:text-amber-300',
+    tone: 'bg-accent/15 text-accent-foreground dark:text-accent',
   },
   {
     icon: BarChart3,
     title: 'Analytics',
     description:
       'Weekly and monthly hours, subject split, streaks and past-paper improvement in one place.',
-    tone: 'from-sky-500/15 to-cyan-500/10 text-sky-600 dark:text-sky-300',
+    tone: 'bg-secondary text-secondary-foreground',
   },
   {
     icon: GraduationCap,
@@ -69,7 +69,7 @@ const FEATURES = [
     title: 'Achievements & Streaks',
     description:
       'XP, levels and badges for daily streaks, perfect weeks and syllabus milestones.',
-    tone: 'from-rose-500/15 to-pink-500/10 text-rose-600 dark:text-rose-300',
+    tone: 'bg-destructive/10 text-destructive',
   },
 ]
 
@@ -327,7 +327,7 @@ export default function Landing() {
             >
               <span
                 className={cn(
-                  'grid size-12 place-items-center rounded-2xl bg-gradient-to-br',
+                  'grid size-12 place-items-center rounded-2xl',
                   feature.tone,
                 )}
               >
