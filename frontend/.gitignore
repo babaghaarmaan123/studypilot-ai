@@ -1,0 +1,6 @@
+# Written by the Vercel CLI. Kept because .vercel holds the project link and
+# .env.local holds a short-lived OIDC token. The negation keeps the committed
+# template visible, which a bare `.env*` would otherwise hide.
+.vercel
+.env*
+!.env.example
