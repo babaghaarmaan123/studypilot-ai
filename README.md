@@ -149,7 +149,7 @@ python -c "import secrets; print(secrets.token_urlsafe(64))"
 
 | Variable | Required | Notes |
 |---|---|---|
-| `VITE_API_URL` | production | API origin, e.g. `https://studypilot-api.onrender.com`. Empty locally so the Vite proxy handles it |
+| `VITE_API_URL` | production | API origin, e.g. `https://studypilot-ai-api.onrender.com`. Empty locally so the Vite proxy handles it |
 
 ---
 

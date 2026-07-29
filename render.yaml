@@ -25,7 +25,10 @@ databases:
 
 services:
   - type: web
-    name: studypilot-api
+    # onrender.com hostnames are global, and `studypilot-api` is already taken
+    # by an unrelated service. Naming it explicitly keeps the URL predictable
+    # instead of letting Render append a random suffix.
+    name: studypilot-ai-api
     runtime: python
     plan: free
     region: frankfurt
