@@ -196,74 +196,148 @@
 
 /* --- react-calendar theming ----------------------------------------------
  *
- * Every tile is at least 44x44 CSS px, the minimum comfortable touch target,
- * which the library's own stylesheet does not guarantee: its tiles shrink with
- * the container and on a 375px phone that leaves roughly 40px cells with 11px
- * numerals inside. `min-height` on the tile plus a 1fr grid keeps them square
- * on wide screens and tall enough on narrow ones.
- */
-/*
- * The library ships `.react-calendar { width: 350px }` and its stylesheet is
- * imported from the page component, so it lands after this file and wins on
- * source order. That fixed 350px then becomes the min-content width of the
- * single-column grid on mobile, pushing the whole card 17px past the viewport
- * and taking the alignment with it. `!important` is the honest fix here: the
- * alternative is depending on import order across two files.
+ * The library stylesheet is imported in main.jsx ahead of this file, so
+ * equal-specificity rules here win on source order. Two things still need
+ * care beyond that:
+ *
+ *   1. The library styles interactive states as
+ *      `.react-calendar__tile:enabled:hover` (three simple selectors).
+ *      Tailwind's `hover:` variant compiles to `.react-calendar__tile:hover`,
+ *      which loses on specificity whatever order the files load in, so those
+ *      selectors are spelled out longhand to match.
+ *   2. `Flex.js` sets `display: flex` as an inline style on the weekday and
+ *      day rows, and only an `!important` declaration overrides that.
+ *
+ * Every tile is at least 44x44 CSS px, the minimum comfortable touch target.
+ * The library's tiles shrink with the container, which on a 375px phone leaves
+ * roughly 40px cells with 11px numerals inside.
  */
 .react-calendar {
-  @apply border-none bg-transparent font-sans;
-  width: 100% !important;
-  max-width: 100% !important;
+  @apply w-full max-w-full border-none bg-transparent font-sans;
 }
+
 .react-calendar__navigation {
-  @apply mb-2 flex items-center gap-1;
+  @apply mb-2 flex h-auto items-center gap-1;
 }
 .react-calendar__navigation button {
   /* 44px minimum in both directions for the month arrows. */
-  @apply min-h-11 min-w-11 rounded-lg px-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-40;
+  @apply min-h-11 min-w-11 rounded-lg bg-transparent px-2 text-sm font-semibold text-foreground transition-colors;
+}
+.react-calendar__navigation button:disabled {
+  @apply bg-transparent opacity-40;
+}
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  @apply bg-muted;
 }
 .react-calendar__navigation__label {
-  @apply font-display text-sm sm:text-base;
+  @apply font-display text-sm font-bold sm:text-base;
 }
-.react-calendar__month-view__weekdays {
-  @apply mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px];
-}
-.react-calendar__month-view__weekdays abbr {
-  @apply cursor-default no-underline;
-}
-.react-calendar__month-view__weekdays__weekday {
-  @apply p-1;
-}
-/* The library lays days out with flex-basis percentages; a grid divides the
-   row exactly and stops the 1px rounding drift that made columns look skewed. */
+
+/*
+ * Both rows get the same seven-track grid and the same gap. The library lays
+ * them out as flex rows with `flex-basis: 14.2857%` and no gap, so putting a
+ * gap on the day rows alone walks the weekday labels progressively out of
+ * line with the columns beneath them, leaving SUN about 10px adrift.
+ */
+.react-calendar__month-view__weekdays,
 .react-calendar__month-view__days {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
 }
-.react-calendar__tile {
-  @apply relative flex min-h-11 items-start justify-center rounded-lg border border-transparent p-1 text-sm text-foreground transition-colors hover:bg-muted;
-  /* Overrides the library's inline flex-basis. */
-  max-width: 100% !important;
-  flex: initial !important;
+.react-calendar__month-view__weekdays {
+  @apply mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px];
 }
+.react-calendar__month-view__weekdays__weekday {
+  @apply p-1;
+}
+.react-calendar__month-view__weekdays abbr {
+  @apply cursor-default no-underline;
+}
+
+/*
+ * Every tile rule below is scoped under `.react-calendar` on purpose. Tiles are
+ * <button> elements and the library ships `.react-calendar button { border: 0 }`,
+ * which at one class plus one type outranks a bare `.react-calendar__tile--now`
+ * and silently zeroed the ring around today. The descendant prefix lifts these
+ * to two classes so they clear it.
+ *
+ * They are all lifted by the same amount, which matters: several of them are
+ * equal specificity and rely on source order to resolve a tile that carries two
+ * of the classes at once. Order is weekend, other month, disabled, hover, today,
+ * selected, so the strongest state wins. The `:enabled:` variants sit one step
+ * higher again and are repeated for today and selected, otherwise the plain
+ * hover rule would outrank them and grey out the tile under the cursor.
+ */
+/*
+ * `border-solid` is explicit rather than inherited from Tailwind's preflight.
+ * The `border` utility only emits a width and leans on `* { border-style: solid }`
+ * for the style, but the library's `border: 0` sets `border-style: none` at a
+ * higher specificity than that universal rule, and a border with no style
+ * computes to zero width whatever width is declared.
+ */
+.react-calendar .react-calendar__tile {
+  @apply relative flex min-h-11 min-w-0 items-start justify-center rounded-lg border border-solid border-transparent bg-transparent p-1 text-sm text-foreground transition-colors;
+}
+/*
+ * Square cells from `sm` up, but capped: the calendar fills its column, and in
+ * a wide two-column layout an uncapped square cell reaches 112px, which leaves
+ * a 14px numeral floating in a lot of empty space. Past the cap the cells go
+ * slightly wider than tall, which is how most month views look anyway.
+ *
+ * `w-full` is load-bearing. Without a definite width the aspect ratio resolves
+ * against the capped height instead, shrinking each tile to 80px inside its
+ * 112px track: the cells then sit left of their weekday headers with wide gaps
+ * between them. Pinning the width makes the ratio resolve from the track and
+ * leaves the cap applying only to height.
+ */
 @screen sm {
-  .react-calendar__tile {
-    @apply aspect-square items-center;
+  .react-calendar .react-calendar__tile {
+    @apply aspect-square w-full max-h-20 items-center;
   }
 }
-.react-calendar__month-view__days__day--neighboringMonth {
-  @apply text-muted-foreground/40;
+
+.react-calendar .react-calendar__month-view__days__day--weekend {
+  /* Not the library's #d10000. Saturday is not an error. */
+  @apply text-foreground;
 }
-.react-calendar__tile--now {
-  @apply border-primary/50 bg-primary/10 font-semibold;
+.react-calendar .react-calendar__month-view__days__day--neighboringMonth {
+  @apply text-muted-foreground/50;
 }
-.react-calendar__tile--active {
-  @apply bg-primary font-semibold text-primary-foreground hover:bg-primary;
+.react-calendar .react-calendar__tile:disabled,
+.react-calendar .react-calendar__month-view__days__day--neighboringMonth:disabled {
+  @apply bg-muted/40 text-muted-foreground/40;
 }
-.react-calendar__tile:focus-visible {
+.react-calendar .react-calendar__tile:enabled:hover,
+.react-calendar .react-calendar__tile:enabled:focus {
+  @apply bg-muted;
+}
+/* Today, when it is not the selected day: tinted fill and a ring. */
+.react-calendar .react-calendar__tile--now {
+  @apply border-primary/60 bg-primary/10 font-semibold text-foreground;
+}
+.react-calendar .react-calendar__tile--now:enabled:hover,
+.react-calendar .react-calendar__tile--now:enabled:focus {
+  @apply bg-primary/20;
+}
+/* Year and decade views mark the range containing the selection. */
+.react-calendar .react-calendar__tile--hasActive {
+  @apply bg-primary/20 font-semibold;
+}
+.react-calendar .react-calendar__tile--hasActive:enabled:hover,
+.react-calendar .react-calendar__tile--hasActive:enabled:focus {
+  @apply bg-primary/30;
+}
+.react-calendar .react-calendar__tile--active,
+.react-calendar .react-calendar__tile--active:enabled:hover,
+.react-calendar .react-calendar__tile--active:enabled:focus {
+  @apply border-primary bg-primary font-semibold text-primary-foreground;
+}
+.react-calendar .react-calendar__tile:focus-visible {
   @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
 }
-.react-calendar__tile--active .cal-dot {
+/* The session dot has to stay legible on the filled selected tile. */
+.react-calendar .react-calendar__tile--active .cal-dot {
   @apply bg-primary-foreground;
 }

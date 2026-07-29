@@ -175,22 +175,17 @@ export default function StudyPlanner() {
     <div className="space-y-6">
       <PageHeader
         title="Study Planner"
-        description="Your timetable for today, this week and the month ahead."
         icon={CalendarClock}
         actions={
-          <>
-            <Button loading={genPending} onClick={generate}>
-              <CalendarPlus /> Generate new plan
-            </Button>
-            <Button variant="subtle" onClick={() => setDialogOpen(true)}>
-              <Plus /> Add session
-            </Button>
-          </>
+          <Button variant="subtle" onClick={() => setDialogOpen(true)}>
+            <Plus /> Add session
+          </Button>
         }
       />
 
       {/* Scroll target for a generation: the progress panel and then the plan
-          itself both land here, directly under the button that started it. */}
+          itself both land here, at the top of the page, whether the run was
+          started from the dashboard or from the empty state below. */}
       <div ref={resultRef} className="scroll-mt-20">
         {showProgress ? (
           <PlanBuildingPanel />

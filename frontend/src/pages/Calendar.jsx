@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import ReactCalendar from 'react-calendar'
-import 'react-calendar/dist/Calendar.css'
 import { Calendar as CalendarIcon, Plus } from 'lucide-react'
+// The library stylesheet is imported in main.jsx, ahead of index.css, so the
+// theme overrides can win on source order. See the note there.
 
 import { useToast } from '@/context/ToastContext'
 import { useFetch, usePending } from '@/hooks/useFetch'
@@ -31,10 +32,12 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 
+// Theme tokens rather than raw palette values, so the dots track the two
+// themes and stay in the app's colours instead of the old indigo.
 const DOT_TONE = {
-  done: 'bg-emerald-500',
-  missed: 'bg-rose-500',
-  pending: 'bg-indigo-500',
+  done: 'bg-success',
+  missed: 'bg-destructive',
+  pending: 'bg-primary',
 }
 
 function dayTone(day) {

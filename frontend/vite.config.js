@@ -16,6 +16,16 @@ export default defineConfig({
       '/uploads': { target: 'http://127.0.0.1:8000', changeOrigin: true },
     },
   },
+  // `vite preview` serves the real build output, which is the closest local
+  // check on what Vercel will serve. It needs the same proxy as the dev server,
+  // otherwise every API call 404s against the static file server.
+  preview: {
+    port: 4319,
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/uploads': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+    },
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
