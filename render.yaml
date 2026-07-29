@@ -19,6 +19,9 @@ databases:
     databaseName: studypilot
     user: studypilot
     plan: free
+    # Must match the web service's region, or the internal connection string
+    # the service is given will not resolve.
+    region: frankfurt
 
 services:
   - type: web
