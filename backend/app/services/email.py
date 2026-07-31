@@ -54,6 +54,18 @@ def send_email(
         return False
 
     provider = settings.email_provider
+    # Logged before the attempt, not only after it. Without this line the logs
+    # cannot distinguish "the provider refused" from "nothing ever called this",
+    # and those have completely different causes: one is a credential or sender
+    # problem, the other is a missing call site.
+    logger.info(
+        "Email attempt: provider=%s from=%s to=%s subject=%r",
+        provider,
+        settings.email_from_address,
+        to,
+        subject,
+    )
+
     if provider == "brevo":
         return _send_via_brevo(to, subject, text_body, html_body)
     if provider == "resend":
@@ -70,24 +82,35 @@ def send_email(
 # HTTPS providers
 # ---------------------------------------------------------------------------
 def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
-    """POST JSON and treat any 2xx as accepted."""
+    """POST JSON and treat any 2xx as accepted.
+
+    Every outcome is logged, including success, so a Render log can answer three
+    separate questions on its own: was a request made at all, did the provider
+    accept it, and if not, what did it say. A provider that rejects a message
+    never records it in its own dashboard, so these lines are the only trace.
+    """
     request = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", **headers},
         method="POST",
     )
+    logger.info("%s request: POST %s (%d bytes)", provider, url, len(request.data or b""))
     try:
         with urllib.request.urlopen(
             request, timeout=settings.EMAIL_API_TIMEOUT_SECONDS
         ) as response:
+            body = response.read()[:400].decode("utf-8", "replace")
             if 200 <= response.status < 300:
+                # The body carries the provider's message id, which is what to
+                # search for in their dashboard when a message is accepted but
+                # never arrives.
+                logger.info(
+                    "%s accepted the message: HTTP %s %s", provider, response.status, body
+                )
                 return True
             logger.error(
-                "%s rejected the message: HTTP %s %s",
-                provider,
-                response.status,
-                response.read()[:400],
+                "%s rejected the message: HTTP %s %s", provider, response.status, body
             )
             return False
     except urllib.error.HTTPError as error:
@@ -98,7 +121,7 @@ def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
         logger.error("%s rejected the message: HTTP %s %s", provider, error.code, detail)
         return False
     except Exception:
-        logger.exception("Could not reach %s", provider)
+        logger.exception("Could not reach %s (POST %s)", provider, url)
         return False
 
 
