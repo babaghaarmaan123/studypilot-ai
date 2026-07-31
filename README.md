@@ -152,10 +152,12 @@ refreshing on `/planner` returns a 404.
 | `UPLOAD_DIR` | no | `uploads` | Point at a mounted disk in production |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | no | `1440` | |
 | `REMEMBER_ME_EXPIRE_MINUTES` | no | `43200` | |
-| `SMTP_HOST` | for password reset | — | Unset means reset codes are logged, not emailed |
+| `EMAIL_PROVIDER` | no | `smtp` | `brevo`, `resend` or `smtp`. **`brevo` on Render's free tier** — see below |
+| `EMAIL_API_KEY` | for `brevo`/`resend` | — | Provider API key |
+| `SMTP_HOST` | for `smtp` | — | Unset means reset codes are logged, not emailed |
 | `SMTP_PORT` | no | `587` | Use `465` with `SMTP_USE_SSL=true` |
-| `SMTP_USERNAME` | for password reset | — | |
-| `SMTP_PASSWORD` | for password reset | — | An app password or API key, never an account password |
+| `SMTP_USERNAME` | for `smtp` | — | |
+| `SMTP_PASSWORD` | for `smtp` | — | An app password, never an account password |
 | `EMAIL_FROM` | no | `SMTP_USERNAME` | Must be an address the provider has verified |
 | `EMAIL_FROM_NAME` | no | `StudyPilot AI` | |
 | `RESET_CODE_EXPIRE_MINUTES` | no | `15` | |
@@ -173,22 +175,33 @@ python -c "import secrets; print(secrets.token_urlsafe(64))"
 "Forgot my password" emails a six digit code that expires in 15 minutes. Only a
 hash of the code is stored, a code works once, and five wrong guesses burn it.
 
-Any SMTP provider works, because delivery goes through the standard library
-rather than a vendor SDK. Two common choices:
+> **SMTP does not work on Render's free tier.** Free web services block outbound
+> traffic to ports 25, 465 and 587
+> ([changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)),
+> so an SMTP send times out there however correct the credentials are, and the
+> failure looks like an authentication problem. Use an HTTPS provider instead,
+> or move to a paid instance.
 
-| Provider | Host | Port | Username | Password |
-|---|---|---|---|---|
-| Gmail (500/day, personal use) | `smtp.gmail.com` | `587` | your address | a 16-character [App Password](https://myaccount.google.com/apppasswords), which requires 2FA |
-| Resend (free tier, better deliverability) | `smtp.resend.com` | `587` | `resend` | an API key |
+| `EMAIL_PROVIDER` | Transport | Needs a domain? | Good for |
+|---|---|---|---|
+| `brevo` | HTTPS, port 443 | No, verifies a single sender address | **Render free tier.** 300 emails/day free |
+| `resend` | HTTPS, port 443 | Yes | A project with its own domain |
+| `smtp` | Ports 587/465 | No | Local development, or a paid Render instance |
 
-Set these in the Render dashboard rather than in `render.yaml`, so the password
-stays out of git. **With `SMTP_HOST` unset the app still runs**, but reset codes
-only reach the server log, which means a student who forgets their password has
-no way back into their account. Production logs an error at start-up to say so.
+For Brevo: sign up, verify the sender address under **Senders**, create a key
+under **SMTP & API → API keys**, then set `EMAIL_PROVIDER=brevo`,
+`EMAIL_API_KEY` and `EMAIL_FROM`.
 
-Locally you can leave SMTP unset: while `DEBUG=true` the code is also returned
-in the `/auth/forgot-password` response and prefilled on the reset screen, so
-the flow can be exercised without a mail server.
+Set the key in the Render dashboard rather than in `render.yaml`, so it stays out
+of git. **With email unconfigured the app still runs**, but reset codes only
+reach the server log, which means a student who forgets their password has no way
+back into their account. Production logs an error at start-up to say so, and
+`GET /health` reports `email` as the active provider or `not configured`, which
+is the quickest way to tell whether the variables took effect.
+
+Locally you can leave it unset: while `DEBUG=true` the code is also returned in
+the `/auth/forgot-password` response and prefilled on the reset screen, so the
+flow can be exercised without any provider.
 
 ### Frontend
 

@@ -65,11 +65,27 @@ services:
       # *.vercel.app is already matched by a regex in app/main.py.
       - key: FRONTEND_URL
         sync: false
-      # Password reset emails. `sync: false` keeps these out of the repo: set
-      # them in the Render dashboard, where the password is stored encrypted and
-      # never appears in git history. Without them the service still runs, but
-      # reset codes are only written to the log, so nobody who forgets their
-      # password can get back in.
+      # Password reset emails.
+      #
+      # `brevo` and not `smtp`: free Render web services block outbound traffic
+      # to SMTP ports 25, 465 and 587, so SMTP sends time out here however
+      # correct the credentials are. Brevo's HTTPS API goes out over 443, and it
+      # will verify a single sender address without requiring a domain.
+      # Switch to smtp only on a paid instance.
+      #
+      # `sync: false` keeps the key out of the repo: set it in the Render
+      # dashboard, where it is stored encrypted and never enters git history.
+      # Without it the service still runs, but reset codes only reach the log,
+      # so nobody who forgets their password can get back in.
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: StudyPilot AI
+      # Only used when EMAIL_PROVIDER=smtp.
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -78,10 +94,6 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
-      - key: EMAIL_FROM
-        sync: false
-      - key: EMAIL_FROM_NAME
-        value: StudyPilot AI
 
     # Uncomment together with a paid instance type to keep uploaded files
     # across deploys:

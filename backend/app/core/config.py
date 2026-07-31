@@ -51,9 +51,26 @@ class Settings(BaseSettings):
     RESET_CODE_RESEND_SECONDS: int = 60
 
     # --- Outbound email ----------------------------------------------------
-    # Unset by default: with no SMTP host configured the reset code is written
-    # to the log instead of sent, which is what you want locally and must never
-    # be what happens in production. See `_guard_production` below.
+    # Two ways to send, because one of them does not work everywhere:
+    #
+    #   `smtp`   classic SMTP. Works locally and on any normal host, but Render
+    #            blocks outbound ports 25, 465 and 587 on free web services
+    #            (since 26 September 2025), so on a free instance every send
+    #            times out. Fine on a paid instance.
+    #   `brevo`  Brevo's HTTPS API. Port 443, so it is unaffected by that block,
+    #            and a single sender address can be verified without owning a
+    #            domain. The right choice on Render's free tier.
+    #   `resend` Resend's HTTPS API. Also unaffected, but needs a verified
+    #            domain to send to arbitrary recipients.
+    #
+    # Unset means nothing is sent and the code is written to the log instead,
+    # which is what you want locally and must never be what happens in
+    # production. See `_guard_production` below.
+    EMAIL_PROVIDER: str = "smtp"
+    #: API key for `brevo` or `resend`. Ignored by the `smtp` provider.
+    EMAIL_API_KEY: Optional[str] = None
+    EMAIL_API_TIMEOUT_SECONDS: int = 20
+
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: Optional[str] = None
@@ -146,9 +163,21 @@ class Settings(BaseSettings):
             # Loud, because a student who forgets their password has no way back
             # into their account until this is set.
             logger.error(
-                "No SMTP host configured in production: password reset codes "
-                "cannot be delivered. Set SMTP_HOST, SMTP_USERNAME, "
-                "SMTP_PASSWORD and EMAIL_FROM to enable them."
+                "Email is not configured in production: password reset codes "
+                "cannot be delivered. Either set EMAIL_PROVIDER=brevo with "
+                "EMAIL_API_KEY and EMAIL_FROM, or EMAIL_PROVIDER=smtp with "
+                "SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD and EMAIL_FROM."
+            )
+        elif self.email_provider == "smtp":
+            # Render blocks outbound 25/465/587 on free web services, so SMTP
+            # there fails with a connection timeout that looks like a wrong
+            # password. Flagged at start-up rather than left to be rediscovered
+            # from a silent inbox.
+            logger.warning(
+                "Email is set to the smtp provider. If this is running on a "
+                "free Render web service, outbound SMTP ports are blocked and "
+                "sends will time out; use EMAIL_PROVIDER=brevo instead, or a "
+                "paid instance."
             )
         return self
 
@@ -157,9 +186,17 @@ class Settings(BaseSettings):
         return self.EMAIL_FROM or self.SMTP_USERNAME
 
     @property
+    def email_provider(self) -> str:
+        return (self.EMAIL_PROVIDER or "smtp").strip().lower()
+
+    @property
     def email_enabled(self) -> bool:
         """Whether there is somewhere to actually hand a message to."""
-        return bool(self.SMTP_HOST and self.email_from_address)
+        if not self.email_from_address:
+            return False
+        if self.email_provider in {"brevo", "resend"}:
+            return bool(self.EMAIL_API_KEY)
+        return bool(self.SMTP_HOST)
 
     @property
     def is_sqlite(self) -> bool:

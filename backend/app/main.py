@@ -141,5 +141,12 @@ def health() -> dict:
         "database": database,
         "engine": "sqlite" if settings.is_sqlite else "postgresql",
         "environment": settings.ENVIRONMENT,
+        # Whether password reset codes can actually be delivered, and by what.
+        # Names the transport only: no host, address, or key, so this stays safe
+        # on a public endpoint. Without it, "no email arrived" is unanswerable
+        # from outside the host's dashboard.
+        "email": (
+            settings.email_provider if settings.email_enabled else "not configured"
+        ),
         "version": __version__,
     }

@@ -1,25 +1,33 @@
-"""Outbound email over SMTP.
+"""Outbound email, over SMTP or a provider's HTTPS API.
 
-Deliberately stdlib only: `smtplib` talks to Gmail, Outlook, Resend, SendGrid,
-Mailgun, Postmark, Amazon SES and anything else that speaks SMTP, so no provider
-SDK or extra dependency is needed.
+Deliberately stdlib only, no provider SDK and no new dependency: `smtplib` for
+SMTP, `urllib.request` for the HTTP providers.
 
-When no SMTP host is configured the message is written to the log rather than
-sent. That keeps local development working with no mail server, and in
-production `Settings._guard_production` logs an error at start-up so the gap is
-visible rather than silent.
+Two transports exist because SMTP does not work everywhere. Render blocks
+outbound ports 25, 465 and 587 on free web services, so on a free instance every
+SMTP send times out no matter how correct the credentials are. The HTTPS
+providers go out over 443 and are unaffected, and Brevo in particular will verify
+a single sender address without requiring a domain.
 
-Sending is blocking, and a slow or unreachable mail server would otherwise hold
-an HTTP worker for the whole timeout, so callers hand this to a background task.
+When nothing is configured the message is written to the log rather than sent.
+That keeps local development working with no mail server, and in production
+`Settings._guard_production` logs an error at start-up so the gap is visible
+rather than silent.
+
+Sending is blocking, and a slow or unreachable provider would otherwise hold an
+HTTP worker for the whole timeout, so callers hand this to a background task.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import smtplib
 import ssl
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
-from email.utils import formataddr, make_msgid
+from email.utils import formataddr, make_msgid, parseaddr
 
 from app.core.config import settings
 
@@ -29,7 +37,7 @@ logger = logging.getLogger(__name__)
 def send_email(
     to: str, subject: str, text_body: str, html_body: str | None = None
 ) -> bool:
-    """Send one message. Returns whether it was handed to a mail server.
+    """Send one message. Returns whether a provider accepted it.
 
     Never raises: a delivery failure must not turn into a 500 for the student,
     and the caller has already told them to check their inbox.
@@ -44,6 +52,106 @@ def send_email(
         )
         return False
 
+    provider = settings.email_provider
+    if provider == "brevo":
+        return _send_via_brevo(to, subject, text_body, html_body)
+    if provider == "resend":
+        return _send_via_resend(to, subject, text_body, html_body)
+    if provider != "smtp":
+        logger.error(
+            "Unknown EMAIL_PROVIDER %r; expected smtp, brevo or resend.", provider
+        )
+        return False
+    return _send_via_smtp(to, subject, text_body, html_body)
+
+
+# ---------------------------------------------------------------------------
+# HTTPS providers
+# ---------------------------------------------------------------------------
+def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
+    """POST JSON and treat any 2xx as accepted."""
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", **headers},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(
+            request, timeout=settings.EMAIL_API_TIMEOUT_SECONDS
+        ) as response:
+            if 200 <= response.status < 300:
+                return True
+            logger.error(
+                "%s rejected the message: HTTP %s %s",
+                provider,
+                response.status,
+                response.read()[:400],
+            )
+            return False
+    except urllib.error.HTTPError as error:
+        # The body carries the real reason: an unverified sender, a bad key, a
+        # quota. Worth logging verbatim, it is the difference between a
+        # five minute fix and an afternoon.
+        detail = error.read()[:400].decode("utf-8", "replace")
+        logger.error("%s rejected the message: HTTP %s %s", provider, error.code, detail)
+        return False
+    except Exception:
+        logger.exception("Could not reach %s", provider)
+        return False
+
+
+def _send_via_brevo(
+    to: str, subject: str, text_body: str, html_body: str | None
+) -> bool:
+    name, address = parseaddr(settings.email_from_address or "")
+    payload: dict = {
+        "sender": {"email": address, "name": settings.EMAIL_FROM_NAME},
+        "to": [{"email": to}],
+        "subject": subject,
+        "textContent": text_body,
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+    ok = _post_json(
+        "https://api.brevo.com/v3/smtp/email",
+        payload,
+        {"api-key": settings.EMAIL_API_KEY or "", "accept": "application/json"},
+        "Brevo",
+    )
+    if ok:
+        logger.info("Sent %r to %s via Brevo", subject, to)
+    return ok
+
+
+def _send_via_resend(
+    to: str, subject: str, text_body: str, html_body: str | None
+) -> bool:
+    payload: dict = {
+        "from": formataddr((settings.EMAIL_FROM_NAME, settings.email_from_address)),
+        "to": [to],
+        "subject": subject,
+        "text": text_body,
+    }
+    if html_body:
+        payload["html"] = html_body
+    ok = _post_json(
+        "https://api.resend.com/emails",
+        payload,
+        {"Authorization": f"Bearer {settings.EMAIL_API_KEY or ''}"},
+        "Resend",
+    )
+    if ok:
+        logger.info("Sent %r to %s via Resend", subject, to)
+    return ok
+
+
+# ---------------------------------------------------------------------------
+# SMTP
+# ---------------------------------------------------------------------------
+def _send_via_smtp(
+    to: str, subject: str, text_body: str, html_body: str | None = None
+) -> bool:
     sender = settings.email_from_address
     message = EmailMessage()
     message["From"] = formataddr((settings.EMAIL_FROM_NAME, sender))
@@ -79,14 +187,28 @@ def send_email(
                     smtp.ehlo()
                 _authenticate(smtp)
                 smtp.send_message(message)
+    except (TimeoutError, OSError) as error:
+        # A timeout here is almost always a blocked port rather than a bad
+        # password, and on Render's free tier it always is. Say so, because the
+        # symptom otherwise reads as an authentication problem.
+        logger.error(
+            "Could not reach the SMTP server at %s:%s (%s). If this is a free "
+            "Render web service, outbound SMTP ports are blocked: set "
+            "EMAIL_PROVIDER=brevo with an EMAIL_API_KEY instead, or move to a "
+            "paid instance.",
+            settings.SMTP_HOST,
+            settings.SMTP_PORT,
+            error,
+        )
+        return False
     except Exception:
-        # Includes authentication failures, refused senders and DNS problems.
-        # Logged with a traceback because this is the one thing that silently
-        # locks a student out of their account.
+        # Includes authentication failures and refused senders. Logged with a
+        # traceback because this is the one thing that silently locks a student
+        # out of their account.
         logger.exception("Could not send email to %s (subject: %s)", to, subject)
         return False
 
-    logger.info("Sent %r to %s", subject, to)
+    logger.info("Sent %r to %s via SMTP", subject, to)
     return True
 
 
