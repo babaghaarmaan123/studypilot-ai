@@ -152,12 +152,43 @@ refreshing on `/planner` returns a 404.
 | `UPLOAD_DIR` | no | `uploads` | Point at a mounted disk in production |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | no | `1440` | |
 | `REMEMBER_ME_EXPIRE_MINUTES` | no | `43200` | |
+| `SMTP_HOST` | for password reset | — | Unset means reset codes are logged, not emailed |
+| `SMTP_PORT` | no | `587` | Use `465` with `SMTP_USE_SSL=true` |
+| `SMTP_USERNAME` | for password reset | — | |
+| `SMTP_PASSWORD` | for password reset | — | An app password or API key, never an account password |
+| `EMAIL_FROM` | no | `SMTP_USERNAME` | Must be an address the provider has verified |
+| `EMAIL_FROM_NAME` | no | `StudyPilot AI` | |
+| `RESET_CODE_EXPIRE_MINUTES` | no | `15` | |
+| `RESET_CODE_MAX_ATTEMPTS` | no | `5` | Guesses allowed per code |
+| `RESET_CODE_RESEND_SECONDS` | no | `60` | Minimum gap between codes for one account |
 
 Generate a signing key with:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
+
+#### Password reset email
+
+"Forgot my password" emails a six digit code that expires in 15 minutes. Only a
+hash of the code is stored, a code works once, and five wrong guesses burn it.
+
+Any SMTP provider works, because delivery goes through the standard library
+rather than a vendor SDK. Two common choices:
+
+| Provider | Host | Port | Username | Password |
+|---|---|---|---|---|
+| Gmail (500/day, personal use) | `smtp.gmail.com` | `587` | your address | a 16-character [App Password](https://myaccount.google.com/apppasswords), which requires 2FA |
+| Resend (free tier, better deliverability) | `smtp.resend.com` | `587` | `resend` | an API key |
+
+Set these in the Render dashboard rather than in `render.yaml`, so the password
+stays out of git. **With `SMTP_HOST` unset the app still runs**, but reset codes
+only reach the server log, which means a student who forgets their password has
+no way back into their account. Production logs an error at start-up to say so.
+
+Locally you can leave SMTP unset: while `DEBUG=true` the code is also returned
+in the `/auth/forgot-password` response and prefilled on the reset screen, so
+the flow can be exercised without a mail server.
 
 ### Frontend
 

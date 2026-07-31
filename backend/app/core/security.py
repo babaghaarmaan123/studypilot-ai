@@ -52,10 +52,6 @@ def create_access_token(user_id: int, remember_me: bool = False) -> str:
     return _create_token(str(user_id), minutes, "access")
 
 
-def create_reset_token(user_id: int) -> str:
-    return _create_token(str(user_id), settings.RESET_TOKEN_EXPIRE_MINUTES, "reset")
-
-
 def decode_token(token: str, expected_type: str = "access") -> Optional[int]:
     """Return the user id encoded in `token`, or None if it is not usable."""
     try:

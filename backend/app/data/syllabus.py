@@ -388,6 +388,54 @@ _GCSE_MATHS: UnitMap = {
     ],
 }
 
+#: Level 2 Further Mathematics, the qualification strong GCSE mathematicians sit
+#: alongside GCSE Maths. It needs its own template: without one, the bare
+#: "Further Mathematics" fallback below would hand a Year 11 the A Level Core
+#: Pure syllabus, complex numbers and hyperbolic functions included.
+#:
+#: Difficulty runs high because the content genuinely is harder than GCSE Maths,
+#: but the hours are deliberately shorter than the full GCSE. It is a
+#: supplementary qualification taught to students who already have the
+#: underlying material, and hours drive how much of the timetable a subject
+#: claims: pitched at GCSE Maths' per-topic rate it would outrank Maths itself.
+_GCSE_FURTHER_MATHS: UnitMap = {
+    "Algebra": [
+        ("Expanding and factorising, including cubics", 2, 3),
+        ("Surds, indices and algebraic fractions", 2, 4),
+        ("Equations and quadratic inequalities", 2, 3),
+        ("Simultaneous equations with a non-linear equation", 2, 4),
+        ("The factor theorem", 1.5, 4),
+        ("Sequences and the nth term of a quadratic", 1.5, 4),
+    ],
+    "Functions and Graphs": [
+        ("Function notation, domain and range", 1.5, 3),
+        ("Composite and inverse functions", 2, 4),
+        ("Graphs of quadratics, cubics and reciprocals", 2, 3),
+        ("Transformations of graphs", 2, 4),
+    ],
+    "Coordinate Geometry": [
+        ("Straight lines, parallel and perpendicular", 1.5, 2),
+        ("The equation of a circle", 1.5, 3),
+        ("Tangents to a circle", 2, 4),
+    ],
+    "Calculus": [
+        ("Differentiating polynomials", 2, 3),
+        ("Tangents and normals to a curve", 2, 4),
+        ("Stationary points and their nature", 2, 4),
+    ],
+    "Matrices and Transformations": [
+        ("Matrix arithmetic and the identity matrix", 1.5, 3),
+        ("Matrices as transformations", 2, 4),
+        ("Combined transformations and invariant points", 2, 4),
+    ],
+    "Geometry and Trigonometry": [
+        ("Pythagoras and trigonometry in three dimensions", 2, 4),
+        ("Sine rule, cosine rule and the area of a triangle", 1.5, 3),
+        ("Exact trigonometric values and graphs", 1.5, 3),
+        ("Trigonometric equations", 2, 4),
+    ],
+}
+
 _GCSE_SCIENCE: UnitMap = {
     "Biology": [
         ("Cell biology and transport", 3, 2),
@@ -561,6 +609,7 @@ _MUSIC: UnitMap = {
 TEMPLATES: Dict[str, UnitMap] = {
     # --- GCSE -------------------------------------------------------------
     "gcse:Mathematics": _GCSE_MATHS,
+    "gcse:Further Mathematics": _GCSE_FURTHER_MATHS,
     "gcse:Combined Science": _GCSE_SCIENCE,
     "gcse:Biology": {"Biology": _GCSE_SCIENCE["Biology"], "Required Practicals": _GCSE_SCIENCE["Required Practicals"]},
     "gcse:Chemistry": {"Chemistry": _GCSE_SCIENCE["Chemistry"], "Required Practicals": _GCSE_SCIENCE["Required Practicals"]},

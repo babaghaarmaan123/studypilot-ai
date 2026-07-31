@@ -1,16 +1,15 @@
 """Registration, login, password reset and the current-user endpoint."""
 
+import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.deps import CurrentUser, DbSession
 from app.core.security import (
     create_access_token,
-    create_reset_token,
-    decode_token,
     hash_password,
     verify_password,
 )
@@ -25,9 +24,13 @@ from app.schemas.auth import (
     UserOut,
 )
 from app.schemas.common import Message
+from app.services import email as email_service
+from app.services import password_reset
 from app.services.achievements import ensure_achievements
 from app.services.activity import log_activity
 from app.services.serializers import user_out
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -125,53 +128,84 @@ def me(user: CurrentUser) -> UserOut:
 
 @router.post(
     "/forgot-password",
-    summary="Request a password reset",
+    summary="Email a password reset code",
     description=(
-        "Always responds with 200 so the endpoint cannot be used to enumerate "
-        "registered emails. In development the reset token is included in the "
-        "response body; in production it would be emailed instead."
+        "Emails a six digit code that expires in "
+        f"{settings.RESET_CODE_EXPIRE_MINUTES} minutes.\n\n"
+        "Always responds with 200, whether or not the address belongs to an "
+        "account, so the endpoint cannot be used to discover who has registered. "
+        "For the same reason it does not report whether the email was actually "
+        "delivered.\n\n"
+        "In development the code is included in the response body so the flow "
+        "can be exercised without a mail server."
     ),
 )
-def forgot_password(payload: ForgotPasswordRequest, db: DbSession) -> dict:
+def forgot_password(
+    payload: ForgotPasswordRequest, db: DbSession, background: BackgroundTasks
+) -> dict:
     user = db.scalar(select(User).where(User.email == payload.email.lower().strip()))
     response = {
         "ok": True,
         "message": (
-            "If an account exists for that email, a reset link is on its way."
+            "If an account exists for that email, a reset code is on its way. "
+            "It expires in "
+            f"{settings.RESET_CODE_EXPIRE_MINUTES} minutes."
         ),
     }
-    if user is None:
+    if user is None or not user.is_active:
         return response
 
-    token = create_reset_token(user.id)
+    code = password_reset.issue_code(db, user)
+    if code is None:
+        # A code went out moments ago. Say nothing different: the student has a
+        # working code in their inbox already, and reporting the throttle would
+        # confirm the address is registered.
+        return response
+    db.commit()
+
+    # Handed to a background task because SMTP is blocking, and a mail server
+    # that takes twenty seconds to answer should not hold the request open.
+    background.add_task(
+        email_service.send_password_reset_code, user.email, user.name, code
+    )
+
     if settings.DEBUG:
-        # Convenience for local development — no mail server required.
-        response["reset_token"] = token
+        response["reset_code"] = code
     return response
 
 
 @router.post(
     "/reset-password",
     response_model=Message,
-    summary="Reset a password using a reset token",
+    summary="Reset a password using the emailed code",
 )
 def reset_password(payload: ResetPasswordRequest, db: DbSession) -> Message:
-    user_id = decode_token(payload.token, expected_type="reset")
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="That reset link is invalid or has expired.",
-        )
+    # One message for every failure. Telling the caller whether the address
+    # exists, whether the code was wrong, or whether it had expired hands an
+    # attacker exactly the information they are probing for.
+    invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=(
+            "That code is not valid or has expired. Request a new one and try "
+            "again."
+        ),
+    )
 
-    user = db.get(User, user_id)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="That reset link is invalid or has expired.",
-        )
+    user = db.scalar(select(User).where(User.email == payload.email.lower().strip()))
+    if user is None or not user.is_active:
+        raise invalid
+
+    ok, reason = password_reset.verify_code(db, user, payload.code)
+    if not ok:
+        db.commit()  # keep the attempt counter
+        logger.info("Password reset rejected for user %s: %s", user.id, reason)
+        raise invalid
 
     user.hashed_password = hash_password(payload.password)
     db.add(user)
+    # Every other code for this account goes too, so a second email that is
+    # still sitting in the inbox cannot be used afterwards.
+    password_reset.clear_codes(db, user)
     log_activity(db, user, "Reset your password", kind="account", icon="key-round")
     db.commit()
     return Message(message="Password updated. You can sign in now.")

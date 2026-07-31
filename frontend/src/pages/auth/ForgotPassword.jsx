@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, MailCheck } from 'lucide-react'
+import { Mail } from 'lucide-react'
 
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,6 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -21,14 +20,20 @@ export default function ForgotPassword() {
     setLoading(true)
     try {
       const response = await api.auth.forgotPassword(email)
-      setSent(true)
-      // In development the backend returns the reset token directly since no
-      // mail server is configured — jump straight to the reset screen.
-      if (response?.reset_token) {
-        setTimeout(() => {
-          navigate(`/reset-password?token=${encodeURIComponent(response.reset_token)}`)
-        }, 900)
-      }
+      /*
+       * Straight on to the code screen rather than a "check your email" dead
+       * end, because the next thing to do is type the code in. That screen
+       * carries the confirmation message instead.
+       *
+       * The address travels in the query string because the code alone
+       * identifies nobody: six digits are not unique across accounts, so the
+       * reset endpoint needs the pair.
+       */
+      const params = new URLSearchParams({ email: email.trim() })
+      // Only present when the backend is running in debug with no mail server
+      // configured, so local development does not need one.
+      if (response?.reset_code) params.set('code', response.reset_code)
+      navigate(`/reset-password?${params.toString()}`)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
     } finally {
@@ -36,32 +41,10 @@ export default function ForgotPassword() {
     }
   }
 
-  if (sent) {
-    return (
-      <AuthLayout
-        title="Check your email"
-        subtitle="If an account exists for that address, a reset link is on its way."
-      >
-        <div className="flex flex-col items-center gap-4 py-4 text-center">
-          <span className="grid size-14 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
-            <MailCheck className="size-7" />
-          </span>
-          <p className="text-sm text-muted-foreground">
-            We sent instructions to <span className="font-semibold text-foreground">{email}</span>.
-            It can take a minute to arrive.
-          </p>
-          <Button variant="outline" asChild className="mt-2 w-full">
-            <Link to="/login">Back to login</Link>
-          </Button>
-        </div>
-      </AuthLayout>
-    )
-  }
-
   return (
     <AuthLayout
       title="Forgot your password?"
-      subtitle="Enter your email and we'll send you a reset link."
+      subtitle="Enter your email and we'll send you a six digit code."
       footer={
         <>
           Remembered it?{' '}
@@ -91,8 +74,15 @@ export default function ForgotPassword() {
         )}
 
         <Button type="submit" className="w-full" size="lg" loading={loading}>
-          <Mail /> Send reset link
+          <Mail /> Send my code
         </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Already have a code?{' '}
+          <Link to="/reset-password" className="font-semibold text-primary hover:underline">
+            Enter it here
+          </Link>
+        </p>
       </form>
     </AuthLayout>
   )

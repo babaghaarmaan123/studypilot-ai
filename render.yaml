@@ -65,6 +65,23 @@ services:
       # *.vercel.app is already matched by a regex in app/main.py.
       - key: FRONTEND_URL
         sync: false
+      # Password reset emails. `sync: false` keeps these out of the repo: set
+      # them in the Render dashboard, where the password is stored encrypted and
+      # never appears in git history. Without them the service still runs, but
+      # reset codes are only written to the log, so nobody who forgets their
+      # password can get back in.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: StudyPilot AI
 
     # Uncomment together with a paid instance type to keep uploaded files
     # across deploys:

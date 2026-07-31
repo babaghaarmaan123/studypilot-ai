@@ -83,6 +83,34 @@ class User(Base, TimestampMixin):
     completed_topics: Mapped[List["CompletedTopic"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )
+    reset_codes: Mapped[List["PasswordResetCode"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class PasswordResetCode(Base, TimestampMixin):
+    """A one-time code emailed to somebody who has forgotten their password.
+
+    Only the hash is stored, for the same reason passwords are hashed: a leaked
+    database must not hand out working reset codes. `attempts` is what stops a
+    six digit code being guessed by brute force, and `used_at` is what stops one
+    code resetting a password twice.
+    """
+
+    __tablename__ = "password_reset_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped["User"] = relationship(back_populates="reset_codes")
 
 
 class UserSettings(Base, TimestampMixin):

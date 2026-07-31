@@ -20,6 +20,7 @@ from app.models.progress import (  # noqa: F401
 )
 from app.models.user import (  # noqa: F401
     AdmissionExam,
+    PasswordResetCode,
     TargetUniversity,
     User,
     UserSettings,
@@ -30,6 +31,7 @@ __all__ = [
     "UserSettings",
     "TargetUniversity",
     "AdmissionExam",
+    "PasswordResetCode",
     "Subject",
     "Unit",
     "Topic",

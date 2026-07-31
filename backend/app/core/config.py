@@ -40,7 +40,32 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24          # 1 day
     REMEMBER_ME_EXPIRE_MINUTES: int = 60 * 24 * 30      # 30 days
-    RESET_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # --- Password reset codes ---------------------------------------------
+    #: Short expiry and a hard attempt cap are what make a six digit code safe:
+    #: there are only a million of them, so it must not stay guessable for long.
+    RESET_CODE_EXPIRE_MINUTES: int = 15
+    RESET_CODE_MAX_ATTEMPTS: int = 5
+    #: Minimum gap between codes for one account, so the endpoint cannot be used
+    #: to bombard somebody's inbox.
+    RESET_CODE_RESEND_SECONDS: int = 60
+
+    # --- Outbound email ----------------------------------------------------
+    # Unset by default: with no SMTP host configured the reset code is written
+    # to the log instead of sent, which is what you want locally and must never
+    # be what happens in production. See `_guard_production` below.
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    #: STARTTLS on 587 (the usual choice). Set SMTP_USE_SSL for implicit TLS on 465.
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
+    SMTP_TIMEOUT_SECONDS: int = 20
+    #: Envelope sender. Many providers require this to match an address or
+    #: domain you have verified with them, so it falls back to the username.
+    EMAIL_FROM: Optional[str] = None
+    EMAIL_FROM_NAME: str = "StudyPilot AI"
 
     # --- CORS --------------------------------------------------------------
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -66,6 +91,25 @@ class Settings(BaseSettings):
     def _split_origins(cls, value):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @field_validator(
+        "SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD", "EMAIL_FROM", mode="before"
+    )
+    @classmethod
+    def _trim_smtp(cls, value):
+        """Trim stray whitespace around SMTP settings.
+
+        Google displays an app password as four groups of four, so it is very
+        easy to paste `SMTP_PASSWORD= abcd efgh ...` with a leading space. The
+        surrounding whitespace survives .env parsing and the login then fails
+        with an authentication error that says nothing about the real cause.
+        Only the outside is trimmed: a password may legitimately contain a
+        space, and Google accepts an app password with or without its own.
+        """
+        if isinstance(value, str):
+            trimmed = value.strip()
+            return trimmed or None
         return value
 
     @field_validator("DATABASE_URL", mode="before")
@@ -97,7 +141,25 @@ class Settings(BaseSettings):
         if self.DEBUG:
             logger.warning("DEBUG is on in production — turning it off")
             self.DEBUG = False
+        if not self.email_enabled:
+            # Not fatal: everything except password reset works without mail.
+            # Loud, because a student who forgets their password has no way back
+            # into their account until this is set.
+            logger.error(
+                "No SMTP host configured in production: password reset codes "
+                "cannot be delivered. Set SMTP_HOST, SMTP_USERNAME, "
+                "SMTP_PASSWORD and EMAIL_FROM to enable them."
+            )
         return self
+
+    @property
+    def email_from_address(self) -> Optional[str]:
+        return self.EMAIL_FROM or self.SMTP_USERNAME
+
+    @property
+    def email_enabled(self) -> bool:
+        """Whether there is somewhere to actually hand a message to."""
+        return bool(self.SMTP_HOST and self.email_from_address)
 
     @property
     def is_sqlite(self) -> bool:

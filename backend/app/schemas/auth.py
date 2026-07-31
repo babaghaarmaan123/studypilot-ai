@@ -48,10 +48,27 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
+    """Email plus the code from that email, rather than a token from a link.
+
+    The email address is part of the request because the code alone identifies
+    nobody: six digits are not unique across accounts, so the pair is what gets
+    looked up.
+    """
+
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=12)
     password: str = Field(max_length=128)
 
     _check_password = field_validator("password")(_validate_password)
+
+    @field_validator("code")
+    @classmethod
+    def _tidy_code(cls, value: str) -> str:
+        # Pasting from the email can bring spaces with it.
+        cleaned = value.strip().replace(" ", "").replace("-", "")
+        if not cleaned.isdigit():
+            raise ValueError("The reset code is the six digits from your email.")
+        return cleaned
 
 
 class ChangePasswordRequest(BaseModel):
