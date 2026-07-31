@@ -104,6 +104,18 @@ def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
 def _send_via_brevo(
     to: str, subject: str, text_body: str, html_body: str | None
 ) -> bool:
+    key = settings.EMAIL_API_KEY or ""
+    if not key.startswith("xkeysib-"):
+        # Brevo shows the key once, in a box that wraps, and it is easy to copy
+        # only the part after the prefix. The API then answers 401, which reads
+        # as a revoked or wrong key rather than a truncated one.
+        logger.warning(
+            "EMAIL_API_KEY does not begin with 'xkeysib-'. Brevo v3 keys do; if "
+            "this send fails with a 401, the prefix is probably missing from the "
+            "copied value. An SMTP key ('xsmtpsib-') will not work here either, "
+            "it needs an API key."
+        )
+
     name, address = parseaddr(settings.email_from_address or "")
     payload: dict = {
         "sender": {"email": address, "name": settings.EMAIL_FROM_NAME},
@@ -116,7 +128,7 @@ def _send_via_brevo(
     ok = _post_json(
         "https://api.brevo.com/v3/smtp/email",
         payload,
-        {"api-key": settings.EMAIL_API_KEY or "", "accept": "application/json"},
+        {"api-key": key, "accept": "application/json"},
         "Brevo",
     )
     if ok:
