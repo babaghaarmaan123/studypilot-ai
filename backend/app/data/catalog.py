@@ -114,7 +114,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Mathematical thinking and reasoning",
         "sessions_per_week": 1,
         "session_minutes": 90,
-        "practice_title": "TMUA practice — Paper 1 reasoning drills",
+        "practice_title": "TMUA practice: Paper 1 reasoning drills",
     },
     {
         "code": "ESAT",
@@ -123,7 +123,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Physics and Mathematics",
         "sessions_per_week": 2,
         "session_minutes": 75,
-        "practice_title": "ESAT practice — Physics & Mathematics",
+        "practice_title": "ESAT practice: physics and mathematics",
     },
     {
         "code": "MAT",
@@ -132,7 +132,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Advanced problem-solving mathematics",
         "sessions_per_week": 1,
         "session_minutes": 90,
-        "practice_title": "MAT practice — advanced mathematics session",
+        "practice_title": "MAT practice: advanced mathematics",
     },
     {
         "code": "PAT",
@@ -141,7 +141,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Physics and Maths problem solving",
         "sessions_per_week": 1,
         "session_minutes": 90,
-        "practice_title": "PAT practice — physics problem set",
+        "practice_title": "PAT practice: physics problem set",
     },
     {
         "code": "STEP",
@@ -150,7 +150,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "STEP-style long-form mathematics",
         "sessions_per_week": 2,
         "session_minutes": 90,
-        "practice_title": "STEP-style practice — full question under timed conditions",
+        "practice_title": "STEP-style practice: full question under timed conditions",
     },
     {
         "code": "LNAT",
@@ -159,7 +159,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Critical reading and argumentative essay",
         "sessions_per_week": 1,
         "session_minutes": 60,
-        "practice_title": "LNAT practice — comprehension & essay",
+        "practice_title": "LNAT practice: comprehension and essay",
     },
     {
         "code": "UCAT",
@@ -168,7 +168,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Reasoning, decision making and situational judgement",
         "sessions_per_week": 3,
         "session_minutes": 45,
-        "practice_title": "UCAT practice — reasoning drills",
+        "practice_title": "UCAT practice: reasoning drills",
     },
     {
         "code": "OXFORD_TESTS",
@@ -195,7 +195,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Listening, reading, writing and speaking",
         "sessions_per_week": 2,
         "session_minutes": 60,
-        "practice_title": "IELTS practice — skills rotation",
+        "practice_title": "IELTS practice: skills rotation",
     },
     {
         "code": "PTE",
@@ -204,7 +204,7 @@ ADMISSION_EXAMS: List[Dict[str, str]] = [
         "focus": "Academic English across four skills",
         "sessions_per_week": 2,
         "session_minutes": 60,
-        "practice_title": "PTE Academic practice — timed section",
+        "practice_title": "PTE Academic practice: timed section",
     },
 ]
 
@@ -212,20 +212,66 @@ ADMISSION_EXAM_INDEX: Dict[str, Dict[str, str]] = {
     exam["code"]: exam for exam in ADMISSION_EXAMS
 }
 
+# All 24 Russell Group universities plus LSE and the non-Russell-Group
+# institutions students most often apply to alongside them.
+#
+# Ordered alphabetically by the distinctive part of the name, not by the literal
+# string, so "University of Bath" files under B rather than stranding two thirds
+# of the list under U. The onboarding step has a filter box, which is what makes
+# a list this long usable.
+#
+# These strings are the stored value, not just a label: a target university is
+# persisted as `TargetUniversity.name`, and the onboarding and profile forms
+# decide what is already selected by comparing those strings to these options.
+# Renaming an entry would silently deselect it for every student who had picked
+# it. Add freely, rename only with a migration.
 UNIVERSITIES: List[str] = [
-    "University of Oxford",
-    "University of Cambridge",
-    "Imperial College London",
-    "University College London",
-    "King's College London",
-    "University of Warwick",
-    "University of Manchester",
-    "University of Bristol",
-    "University of Edinburgh",
-    "Durham University",
-    "University of Southampton",
+    "University of Aberdeen",
+    "Aston University",
+    "University of Bath",
     "University of Birmingham",
+    "University of Bristol",
+    "Brunel University London",
+    "University of Cambridge",
+    "Cardiff University",
+    "City, University of London",
+    "Coventry University",
+    "Durham University",
+    "University of East Anglia",
+    "University of Edinburgh",
+    "University of Essex",
+    "University of Exeter",
+    "University of Glasgow",
+    "Heriot-Watt University",
+    "Imperial College London",
+    "Keele University",
+    "University of Kent",
+    "King's College London",
+    "Lancaster University",
     "University of Leeds",
+    "University of Leicester",
+    "University of Liverpool",
+    "London School of Economics (LSE)",
+    "Loughborough University",
+    "University of Manchester",
+    "Newcastle University",
+    "University of Nottingham",
+    "University of Oxford",
+    "Queen Mary University of London",
+    "Queen's University Belfast",
+    "University of Reading",
+    "Royal Holloway, University of London",
+    "University of Sheffield",
+    "SOAS University of London",
+    "University of Southampton",
+    "University of St Andrews",
+    "University of Strathclyde",
+    "University of Surrey",
+    "University of Sussex",
+    "Swansea University",
+    "University College London",
+    "University of Warwick",
+    "University of York",
     "Other",
 ]
 

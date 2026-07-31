@@ -10,10 +10,12 @@ import {
   CheckCircle2,
   Loader2,
   Plus,
+  Search,
   Sparkles,
   Target,
   Trash2,
   Wand2,
+  X,
 } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
@@ -88,6 +90,91 @@ function OptionGrid({ options, value, onChange, multi = false, columns = 'sm:gri
           />
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * Multi-select for a list too long to scan, which the university list now is.
+ *
+ * Current choices sit above the filter as removable chips, so filtering never
+ * hides what has already been picked and nothing has to be cleared to check a
+ * selection. Matching ignores the "University of" prefix most entries share,
+ * otherwise typing "bath" would be the only way to reach it and typing "uni"
+ * would match everything.
+ */
+function SearchableOptionGrid({ options, value, onChange, placeholder, columns }) {
+  const [query, setQuery] = useState('')
+  const selected = value || []
+
+  const toggle = (option) =>
+    onChange(
+      selected.includes(option)
+        ? selected.filter((v) => v !== option)
+        : [...selected, option],
+    )
+
+  const needle = query.trim().toLowerCase()
+  const matches = useMemo(() => {
+    if (!needle) return options
+    return options.filter((option) => {
+      const name = option.toLowerCase()
+      return name.includes(needle) || name.replace(/^university of /, '').includes(needle)
+    })
+  }, [options, needle])
+
+  return (
+    <div className="space-y-3">
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selected.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggle(option)}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+            >
+              {option}
+              <X className="size-3.5" aria-hidden="true" />
+              <span className="sr-only">Remove {option}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={placeholder}
+          className="h-11 pl-9"
+          aria-label={placeholder}
+        />
+      </div>
+
+      {matches.length === 0 ? (
+        <p className="rounded-xl bg-muted/60 px-4 py-6 text-center text-sm text-muted-foreground">
+          Nothing matches &ldquo;{query.trim()}&rdquo;. Pick Other and you can add the
+          details later.
+        </p>
+      ) : (
+        <div
+          className={cn('grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1', columns)}
+        >
+          {matches.map((option) => (
+            <ChoiceCard
+              key={option}
+              selected={selected.includes(option)}
+              onClick={() => toggle(option)}
+              title={option}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -551,11 +638,11 @@ function QuestionBody({ question, answers, set, catalog }) {
 
     case 'universities':
       return (
-        <OptionGrid
+        <SearchableOptionGrid
           options={question.options}
           value={answers.universities}
           onChange={(v) => set('universities', v)}
-          multi
+          placeholder="Search universities"
           columns="sm:grid-cols-2"
         />
       )

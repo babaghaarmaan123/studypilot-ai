@@ -75,10 +75,20 @@ def build_summary(
         opening += ", " + " and ".join(goal_bits)
 
     weekly = round(user.weekday_hours * 5 + user.weekend_hours * 2, 1)
+    # Only claim admissions preparation when there is some. This sentence used to
+    # promise it unconditionally, which was simply untrue for the many students
+    # who sit no admissions test.
+    if admissions:
+        balance = (
+            "that balances your subjects with "
+            f"{_list_phrase(admissions, 3)} preparation"
+        )
+    else:
+        balance = "covering all your subjects"
     summary = (
-        f"{opening}, I have created a personalised study plan that balances school "
-        f"revision with admissions preparation across about {weekly} hours a week, "
-        f"scheduled in the {user.preferred_study_time}."
+        f"{opening}, I have created a personalised study plan {balance} across "
+        f"about {weekly} hours a week, scheduled in the "
+        f"{user.preferred_study_time}."
     )
 
     upcoming = sorted(

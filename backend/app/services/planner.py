@@ -56,6 +56,60 @@ MIN_BLOCK_MINUTES = 20
 
 PRIORITY_WEIGHT = {"low": 0.75, "medium": 1.0, "high": 1.35}
 
+#: A subject with no syllabus still has to be scheduled: the student is
+#: studying it whether or not they have uploaded a specification. There is no
+#: topic list to measure, so it is weighted as a moderate amount of outstanding
+#: work. Big enough that the subject gets real time, small enough that one
+#: subject with a fully parsed 60-hour syllabus still outranks it.
+NO_SYLLABUS_NOMINAL_HOURS = 8.0
+
+#: Rotated through, so a week of blocks for the same subject asks for different
+#: work rather than repeating one instruction. Used when there is no syllabus to
+#: name a topic from.
+NO_SYLLABUS_INTENTS: List[Tuple[str, str]] = [
+    (
+        "core concepts",
+        "Take the next section of your course outline: read it through, then "
+        "close the book and write down the main ideas from memory.",
+    ),
+    (
+        "practice questions",
+        "Textbook or worksheet questions on your most recent material. Mark "
+        "them yourself and write down anything you got wrong.",
+    ),
+    (
+        "exam-style questions",
+        "Exam-style questions under light time pressure, then check them "
+        "against the mark scheme and note where marks were lost.",
+    ),
+    (
+        "recall and consolidation",
+        "Notes away: write out what you remember of the last two weeks, then "
+        "reopen them and fill only the gaps you could not recall.",
+    ),
+]
+
+#: The same idea for a subject whose syllabus is fully covered. Nothing is left
+#: to teach, so the time goes into keeping it and proving it under exam
+#: conditions.
+COVERED_INTENTS: List[Tuple[str, str]] = [
+    (
+        "exam-style questions",
+        "The syllabus is covered, so this is about applying it. Exam-style "
+        "questions, marked against the mark scheme.",
+    ),
+    (
+        "recall practice",
+        "Blank-page recall across the whole specification. Whatever comes out "
+        "thin is what to revisit next.",
+    ),
+    (
+        "weak-topic review",
+        "Go back to the topics you scored lowest on and rework them, rather "
+        "than re-reading what you already know.",
+    ),
+]
+
 #: How hard an approaching exam pulls time towards a subject.
 def _exam_pressure(days_until: Optional[int]) -> float:
     if days_until is None:
@@ -77,18 +131,35 @@ def _exam_pressure(days_until: Optional[int]) -> float:
 
 @dataclass
 class SubjectQueue:
-    """A subject plus the topics still to be covered, in syllabus order."""
+    """A subject plus the topics still to be covered, in syllabus order.
+
+    `topics` is allowed to be empty. A subject the student has told us they
+    study is scheduled either way: with a syllabus we can name the next topic,
+    and without one we book the time and say what to do with it. `syllabus_size`
+    distinguishes the two reasons `topics` can run out, which read very
+    differently to a student: nothing uploaded yet, or everything covered.
+    """
 
     subject: Subject
     topics: List[Topic]
     score: float
+    syllabus_size: int = 0
     target_share: float = 0.0
     allocated_minutes: int = 0
     cursor: int = 0
     minutes_into_topic: Dict[int, int] = field(default_factory=dict)
+    #: Position in the intent rotation used when there is no topic to name.
+    generic_index: int = 0
+
+    @property
+    def has_syllabus(self) -> bool:
+        return self.syllabus_size > 0
 
     @property
     def remaining_hours(self) -> float:
+        """Outstanding work, used to weight this subject against the others."""
+        if not self.has_syllabus:
+            return NO_SYLLABUS_NOMINAL_HOURS
         return sum(t.estimated_hours for t in self.topics[self.cursor:])
 
     def current_topic(self) -> Optional[Topic]:
@@ -96,11 +167,19 @@ class SubjectQueue:
             return self.topics[self.cursor]
         return None
 
+    def day_key(self) -> Tuple[str, int]:
+        """Identity for "already scheduled today", topic-wise or subject-wise."""
+        topic = self.current_topic()
+        if topic is not None:
+            return ("topic", topic.id)
+        return ("subject", self.subject.id)
+
     def consume(self, minutes: int) -> Optional[Topic]:
         """Book `minutes` against the current topic, advancing when it's full."""
         topic = self.current_topic()
         self.allocated_minutes += minutes
         if topic is None:
+            self.generic_index += 1
             return None
         spent = self.minutes_into_topic.get(topic.id, 0) + minutes
         self.minutes_into_topic[topic.id] = spent
@@ -167,21 +246,25 @@ def score_subject(subject: Subject, today: date) -> float:
 
 
 def build_queues(user: User, today: date) -> List[SubjectQueue]:
+    """One queue per active subject.
+
+    Every subject the student studies gets a queue, including subjects with no
+    syllabus and subjects whose syllabus is fully covered. Skipping those used to
+    mean a student who had not uploaded any specifications got a plan containing
+    nothing but their admissions-test practice, or nothing at all.
+    """
     queues: List[SubjectQueue] = []
     for subject in user.subjects:
         if subject.is_archived:
             continue
-        pending = [
-            topic
-            for unit in subject.units
-            for topic in unit.topics
-            if topic.status != "completed"
-        ]
-        if not pending:
-            continue
+        all_topics = [topic for unit in subject.units for topic in unit.topics]
+        pending = [topic for topic in all_topics if topic.status != "completed"]
         queues.append(
             SubjectQueue(
-                subject=subject, topics=pending, score=score_subject(subject, today)
+                subject=subject,
+                topics=pending,
+                syllabus_size=len(all_topics),
+                score=score_subject(subject, today),
             )
         )
 
@@ -201,15 +284,17 @@ def _pick_queue(
 ):
     """Largest-deficit choice: whoever is furthest below their target share.
 
-    Topics already scheduled earlier the same day are deprioritised so a day
-    covers several different things rather than grinding one topic six times.
+    Work already scheduled earlier the same day is deprioritised so a day covers
+    several different things rather than grinding one topic six times. Every
+    queue is a candidate: one with topics left offers its next topic, and one
+    without offers a general block for that subject.
     """
-    candidates = [q for q in queues if q.current_topic() is not None]
+    candidates = list(queues)
     if not candidates:
         return None
 
     if seen_today:
-        fresh = [q for q in candidates if q.current_topic().id not in seen_today]
+        fresh = [q for q in candidates if q.day_key() not in seen_today]
         if fresh:
             candidates = fresh
 
@@ -375,9 +460,16 @@ def generate_plan(
             )
             remaining -= minutes
 
-        # 3. Admissions-test practice.
+        # 3. Admissions-test practice, but never the whole day.
+        #
+        # Two tests can land on the same weekday, and at two hours a weekday
+        # that is the entire day gone before a single subject is scheduled. One
+        # block is held back so school subjects always get a share of a day
+        # they share with admissions work; the test still gets its other
+        # sessions later in the week.
+        study_floor = MIN_BLOCK_MINUTES if queues else 0
         for entry in admission_schedule.get(day.weekday(), []):
-            minutes = min(entry["minutes"], remaining)
+            minutes = min(entry["minutes"], remaining - study_floor)
             if minutes < 30:
                 break
             day_blocks.append(
@@ -410,7 +502,7 @@ def generate_plan(
             )
             remaining -= 90
 
-        # 5. Fill what is left with syllabus study, largest deficit first.
+        # 5. Fill what is left with subject study, largest deficit first.
         seen_today: set = set()
         while remaining >= MIN_BLOCK_MINUTES and queues:
             size = min(block, remaining)
@@ -418,22 +510,32 @@ def generate_plan(
             if queue is None:
                 break
             topic = queue.current_topic()
+            seen_today.add(queue.day_key())
+
+            # Name the block before consuming: consuming advances the topic
+            # cursor and the generic-intent rotation, so doing it first would
+            # label this block with the *next* piece of work and never use the
+            # first intent in the rotation at all.
+            if topic is not None:
+                part = topic_parts.get(topic.id, 0) + 1
+                topic_parts[topic.id] = part
+                suffix = f" (part {part})" if part > 1 else ""
+                title = f"{queue.subject.name}: {topic.name}{suffix}"
+                description = _study_description(queue.subject, topic, part)
+            else:
+                title, description = _generic_study_block(queue)
+
             queue.consume(size)
             allocated_total += size
-            seen_today.add(topic.id)
-
-            part = topic_parts.get(topic.id, 0) + 1
-            topic_parts[topic.id] = part
-            suffix = f" (part {part})" if part > 1 else ""
 
             day_blocks.append(
                 {
-                    "title": f"{queue.subject.name}: {topic.name}{suffix}",
-                    "description": _study_description(queue.subject, topic, part),
+                    "title": title,
+                    "description": description,
                     "minutes": size,
                     "kind": "study",
                     "subject_id": queue.subject.id,
-                    "topic_id": topic.id,
+                    "topic_id": topic.id if topic is not None else None,
                     "score": queue.score,
                 }
             )
@@ -448,6 +550,17 @@ def generate_plan(
     db.add(plan)
     db.flush()
     return plan
+
+
+def _generic_study_block(queue: SubjectQueue) -> Tuple[str, str]:
+    """Title and description for a study block with no topic to name.
+
+    Either the subject has no syllabus yet or its syllabus is fully covered, and
+    the two want different work, so each has its own rotation of intents.
+    """
+    rotation = COVERED_INTENTS if queue.has_syllabus else NO_SYLLABUS_INTENTS
+    label, instruction = rotation[queue.generic_index % len(rotation)]
+    return f"{queue.subject.name}: {label}", f"{queue.subject.name} · {instruction}"
 
 
 def _study_description(subject: Subject, topic: Topic, part: int = 1) -> str:
@@ -537,18 +650,20 @@ def _strategy_text(
 ) -> str:
     if not queues:
         return (
-            "You have no outstanding syllabus topics. Add subjects or reopen "
-            "topics you would like to revisit and regenerate the plan."
+            "There are no subjects on your profile yet, so there is nothing to "
+            "schedule. Add your subjects and generate the plan again."
         )
 
     ranked = sorted(queues, key=lambda q: q.target_share, reverse=True)
     top = ", ".join(q.subject.name for q in ranked[:3])
     weekly = round((user.weekday_hours * 5 + user.weekend_hours * 2), 1)
     admissions = [entry.code for entry in user.admission_exams]
+    without_syllabus = [q.subject.name for q in queues if not q.has_syllabus]
 
     parts = [
         f"Plan covering {start.strftime('%d %b')} to {end.strftime('%d %b')} at "
-        f"roughly {weekly} hours a week.",
+        f"roughly {weekly} hours a week, across all "
+        f"{len(queues)} of your subjects.",
         f"Most time goes to {top}, weighted by exam dates, difficulty and how "
         "much syllabus you have left.",
     ]
@@ -556,7 +671,15 @@ def _strategy_text(
         parts.append(
             "Admissions preparation for "
             + ", ".join(admissions)
-            + " is booked in weekly so it never competes with school revision."
+            + " is booked in alongside your subjects each week, not instead of them."
+        )
+    if without_syllabus:
+        named = ", ".join(without_syllabus[:3])
+        more = f" and {len(without_syllabus) - 3} more" if len(without_syllabus) > 3 else ""
+        parts.append(
+            f"{named}{more} still have time booked but no uploaded specification, "
+            "so those blocks say what kind of work to do rather than naming a "
+            "topic. Upload the syllabus and the next plan will name them."
         )
     parts.append(
         "Spaced-repetition revisions are placed first each day, so recall work "
@@ -572,6 +695,11 @@ def _focus_notes(user: User, queues: List[SubjectQueue], today: date) -> List[st
     for queue in ranked[:3]:
         days = _days_until_next_exam(queue.subject, today)
         when = f"{days} days to the exam" if days is not None else "no exam booked yet"
+        if not queue.has_syllabus:
+            # `remaining_hours` is a nominal weighting figure for these, so
+            # quoting it would invent a number the student cannot check.
+            notes.append(f"{queue.subject.name}: no syllabus uploaded yet, {when}.")
+            continue
         notes.append(
             f"{queue.subject.name}: {queue.subject.completion_percentage:.0f}% covered, "
             f"{queue.remaining_hours:.0f}h left, {when}."
