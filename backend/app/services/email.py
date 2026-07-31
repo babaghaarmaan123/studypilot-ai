@@ -26,6 +26,7 @@ import smtplib
 import ssl
 import urllib.error
 import urllib.request
+from dataclasses import dataclass, field
 from datetime import date
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid, parseaddr
@@ -33,6 +34,40 @@ from email.utils import formataddr, make_msgid, parseaddr
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+#: Header names whose values must never reach a log or a diagnostic response.
+_SECRET_HEADERS = {"api-key", "authorization"}
+
+
+@dataclass
+class ProviderResult:
+    """The outcome of one HTTP call to an email provider.
+
+    Carries the status and body rather than collapsing them to a boolean, so a
+    diagnostic can report exactly what the provider said. A rejected message is
+    recorded nowhere in the provider's own dashboard, so this is the only place
+    the reason exists.
+    """
+
+    ok: bool
+    status: int | None = None
+    body: str = ""
+    error: str | None = None
+
+    def as_dict(self) -> dict:
+        return {
+            "ok": self.ok,
+            "http_status": self.status,
+            "response_body": self.body,
+            "error": self.error,
+        }
+
+
+def _redact_headers(headers: dict) -> dict:
+    return {
+        key: ("<redacted>" if key.lower() in _SECRET_HEADERS else value)
+        for key, value in headers.items()
+    }
 
 
 def send_email(
@@ -81,7 +116,9 @@ def send_email(
 # ---------------------------------------------------------------------------
 # HTTPS providers
 # ---------------------------------------------------------------------------
-def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
+def _post_json(
+    url: str, payload: dict, headers: dict, provider: str
+) -> ProviderResult:
     """POST JSON and treat any 2xx as accepted.
 
     Every outcome is logged, including success, so a Render log can answer three
@@ -89,18 +126,29 @@ def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
     accept it, and if not, what did it say. A provider that rejects a message
     never records it in its own dashboard, so these lines are the only trace.
     """
+    body_bytes = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         url,
-        data=json.dumps(payload).encode("utf-8"),
+        data=body_bytes,
         headers={"Content-Type": "application/json", **headers},
         method="POST",
     )
-    logger.info("%s request: POST %s (%d bytes)", provider, url, len(request.data or b""))
+    logger.info("%s request: POST %s (%d bytes)", provider, url, len(body_bytes))
+    if settings.EMAIL_LOG_PAYLOAD:
+        # Off by default: the payload contains the whole message, which for a
+        # reset email means the code itself, and nobody wants that in a log by
+        # default. Turn it on to debug a provider rejection, then turn it off.
+        logger.info(
+            "%s payload: headers=%s body=%s",
+            provider,
+            json.dumps(_redact_headers(dict(request.header_items()))),
+            json.dumps(payload)[:4000],
+        )
     try:
         with urllib.request.urlopen(
             request, timeout=settings.EMAIL_API_TIMEOUT_SECONDS
         ) as response:
-            body = response.read()[:400].decode("utf-8", "replace")
+            body = response.read()[:800].decode("utf-8", "replace")
             if 200 <= response.status < 300:
                 # The body carries the provider's message id, which is what to
                 # search for in their dashboard when a message is accepted but
@@ -108,27 +156,24 @@ def _post_json(url: str, payload: dict, headers: dict, provider: str) -> bool:
                 logger.info(
                     "%s accepted the message: HTTP %s %s", provider, response.status, body
                 )
-                return True
+                return ProviderResult(True, response.status, body)
             logger.error(
                 "%s rejected the message: HTTP %s %s", provider, response.status, body
             )
-            return False
+            return ProviderResult(False, response.status, body)
     except urllib.error.HTTPError as error:
         # The body carries the real reason: an unverified sender, a bad key, a
         # quota. Worth logging verbatim, it is the difference between a
         # five minute fix and an afternoon.
-        detail = error.read()[:400].decode("utf-8", "replace")
+        detail = error.read()[:800].decode("utf-8", "replace")
         logger.error("%s rejected the message: HTTP %s %s", provider, error.code, detail)
-        return False
-    except Exception:
+        return ProviderResult(False, error.code, detail)
+    except Exception as error:
         logger.exception("Could not reach %s (POST %s)", provider, url)
-        return False
+        return ProviderResult(False, None, "", f"{type(error).__name__}: {error}")
 
 
-def _send_via_brevo(
-    to: str, subject: str, text_body: str, html_body: str | None
-) -> bool:
-    key = settings.EMAIL_API_KEY or ""
+def _warn_on_odd_brevo_key(key: str) -> None:
     if not key.startswith("xkeysib-"):
         # Brevo shows the key once, in a box that wraps, and it is easy to copy
         # only the part after the prefix. The API then answers 401, which reads
@@ -140,7 +185,11 @@ def _send_via_brevo(
             "it needs an API key."
         )
 
-    name, address = parseaddr(settings.email_from_address or "")
+
+def brevo_payload(to: str, subject: str, text_body: str, html_body: str | None) -> dict:
+    """The exact JSON body sent to Brevo. Shared with the diagnostics endpoint,
+    so what a diagnostic reports is what a real send transmits."""
+    _, address = parseaddr(settings.email_from_address or "")
     payload: dict = {
         "sender": {"email": address, "name": settings.EMAIL_FROM_NAME},
         "to": [{"email": to}],
@@ -149,20 +198,35 @@ def _send_via_brevo(
     }
     if html_body:
         payload["htmlContent"] = html_body
-    ok = _post_json(
-        "https://api.brevo.com/v3/smtp/email",
-        payload,
-        {"api-key": key, "accept": "application/json"},
-        "Brevo",
-    )
-    if ok:
-        logger.info("Sent %r to %s via Brevo", subject, to)
-    return ok
+    return payload
 
 
-def _send_via_resend(
+BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
+
+
+def _brevo_headers() -> dict:
+    return {"api-key": settings.EMAIL_API_KEY or "", "accept": "application/json"}
+
+
+def _send_via_brevo(
     to: str, subject: str, text_body: str, html_body: str | None
 ) -> bool:
+    _warn_on_odd_brevo_key(settings.EMAIL_API_KEY or "")
+    result = _post_json(
+        BREVO_ENDPOINT,
+        brevo_payload(to, subject, text_body, html_body),
+        _brevo_headers(),
+        "Brevo",
+    )
+    if result.ok:
+        logger.info("Sent %r to %s via Brevo", subject, to)
+    return result.ok
+
+
+RESEND_ENDPOINT = "https://api.resend.com/emails"
+
+
+def resend_payload(to: str, subject: str, text_body: str, html_body: str | None) -> dict:
     payload: dict = {
         "from": formataddr((settings.EMAIL_FROM_NAME, settings.email_from_address)),
         "to": [to],
@@ -171,15 +235,117 @@ def _send_via_resend(
     }
     if html_body:
         payload["html"] = html_body
-    ok = _post_json(
-        "https://api.resend.com/emails",
-        payload,
+    return payload
+
+
+def _send_via_resend(
+    to: str, subject: str, text_body: str, html_body: str | None
+) -> bool:
+    result = _post_json(
+        RESEND_ENDPOINT,
+        resend_payload(to, subject, text_body, html_body),
         {"Authorization": f"Bearer {settings.EMAIL_API_KEY or ''}"},
         "Resend",
     )
-    if ok:
+    if result.ok:
         logger.info("Sent %r to %s via Resend", subject, to)
-    return ok
+    return result.ok
+
+
+# ---------------------------------------------------------------------------
+# Diagnostics
+# ---------------------------------------------------------------------------
+def runtime_config() -> dict:
+    """The email settings actually in effect in this process.
+
+    Read from the live `settings` object rather than inferred from a file, so it
+    reflects what the running container was given. Never includes the API key:
+    its presence, length and prefix are enough to tell a missing key from a
+    truncated one or an SMTP key pasted by mistake, which are the three ways it
+    goes wrong.
+    """
+    key = settings.EMAIL_API_KEY or ""
+    return {
+        "environment": settings.ENVIRONMENT,
+        "email_enabled": settings.email_enabled,
+        "EMAIL_PROVIDER": settings.EMAIL_PROVIDER,
+        "email_provider_normalised": settings.email_provider,
+        "EMAIL_FROM": settings.EMAIL_FROM,
+        "EMAIL_FROM_NAME": settings.EMAIL_FROM_NAME,
+        "email_from_address_used": settings.email_from_address,
+        "EMAIL_API_KEY_present": bool(key),
+        "EMAIL_API_KEY_length": len(key),
+        "EMAIL_API_KEY_prefix": key.split("-")[0] + "-" if "-" in key else key[:4],
+        "EMAIL_API_KEY_looks_like_brevo_api_key": key.startswith("xkeysib-"),
+        "SMTP_HOST": settings.SMTP_HOST,
+        "SMTP_PORT": settings.SMTP_PORT,
+        "EMAIL_LOG_PAYLOAD": settings.EMAIL_LOG_PAYLOAD,
+    }
+
+
+def probe(to: str) -> dict:
+    """Send a real test message and report the request and the provider's reply.
+
+    Returns the exact payload transmitted and the verbatim response, which is
+    the only way to see a rejection: providers do not record refused messages in
+    their dashboards, so there is nothing to look up afterwards.
+    """
+    provider = settings.email_provider
+    report: dict = {"config": runtime_config(), "provider": provider, "to": to}
+
+    if not settings.email_enabled:
+        report["attempted"] = False
+        report["reason"] = (
+            "Email is not configured: email_enabled is false, so no request was "
+            "made. Check EMAIL_PROVIDER, EMAIL_API_KEY and EMAIL_FROM."
+        )
+        return report
+
+    subject = "StudyPilot email delivery test"
+    text_body = (
+        "This is a test message from StudyPilot's diagnostics endpoint.\n\n"
+        "If you are reading it, transactional email works: the provider "
+        "accepted the message and delivered it.\n"
+    )
+    html_body = (
+        "<p>This is a test message from StudyPilot's diagnostics endpoint.</p>"
+        "<p>If you are reading it, transactional email works.</p>"
+    )
+
+    if provider == "brevo":
+        _warn_on_odd_brevo_key(settings.EMAIL_API_KEY or "")
+        payload = brevo_payload(to, subject, text_body, html_body)
+        endpoint, headers = BREVO_ENDPOINT, _brevo_headers()
+    elif provider == "resend":
+        payload = resend_payload(to, subject, text_body, html_body)
+        endpoint = RESEND_ENDPOINT
+        headers = {"Authorization": f"Bearer {settings.EMAIL_API_KEY or ''}"}
+    else:
+        report["attempted"] = bool(_send_via_smtp(to, subject, text_body, html_body))
+        report["note"] = (
+            "The smtp provider has no HTTP response to report; see the Render "
+            "log for the SMTP conversation."
+        )
+        return report
+
+    result = _post_json(endpoint, payload, headers, provider.title())
+    report["attempted"] = True
+    report["endpoint"] = endpoint
+    report["request_headers"] = _redact_headers(
+        {"Content-Type": "application/json", **headers}
+    )
+    # Bodies trimmed: the point is to see the sender, recipient and subject the
+    # provider was given, not to re-read the template.
+    report["request_payload"] = {
+        **payload,
+        **{
+            key: f"<{len(value)} chars>"
+            for key, value in payload.items()
+            if key in {"textContent", "htmlContent", "text", "html"}
+        },
+    }
+    report.update(result.as_dict())
+    return report
 
 
 # ---------------------------------------------------------------------------

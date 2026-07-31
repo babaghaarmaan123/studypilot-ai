@@ -19,6 +19,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, status
 
 from app.core.config import settings
 from app.core.deps import DbSession
+from app.services import email as email_service
 from app.services import reminders
 
 router = APIRouter(prefix="/tasks", tags=["Scheduled tasks"])
@@ -67,3 +68,43 @@ def daily_reminders(
     _authorise(x_task_key)
     run = reminders.send_daily_reminders(db, for_date=day, dry_run=dry_run)
     return {"ok": True, "dry_run": dry_run, **run.as_dict()}
+
+
+@router.get(
+    "/email-config",
+    summary="The email settings actually in effect on this instance",
+    description=(
+        "Reports the runtime values rather than what a config file says, so a "
+        "variable that was never saved on the host is visible as such.\n\n"
+        "The API key is never returned. Its presence, length and prefix are "
+        "reported instead, which distinguishes the three ways it goes wrong: "
+        "missing, truncated (no `xkeysib-`), or an SMTP key pasted by mistake.\n\n"
+        "Authenticate with the `X-Task-Key` header."
+    ),
+)
+def email_config(
+    x_task_key: Optional[str] = Header(default=None, alias="X-Task-Key"),
+) -> dict:
+    _authorise(x_task_key)
+    return email_service.runtime_config()
+
+
+@router.post(
+    "/email-test",
+    summary="Send one test email and report the provider's exact response",
+    description=(
+        "Sends a real message, then returns the endpoint called, the payload "
+        "transmitted (message bodies summarised, secrets redacted) and the "
+        "provider's verbatim status and body.\n\n"
+        "This exists because a rejected message is recorded nowhere in a "
+        "provider's own dashboard: their logs only list messages they accepted, "
+        "so a refusal leaves no trace to look up afterwards.\n\n"
+        "Authenticate with the `X-Task-Key` header."
+    ),
+)
+def email_test(
+    to: str = Query(description="Where to send the test message."),
+    x_task_key: Optional[str] = Header(default=None, alias="X-Task-Key"),
+) -> dict:
+    _authorise(x_task_key)
+    return email_service.probe(to)

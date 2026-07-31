@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     #: API key for `brevo` or `resend`. Ignored by the `smtp` provider.
     EMAIL_API_KEY: Optional[str] = None
     EMAIL_API_TIMEOUT_SECONDS: int = 20
+    #: Log the full JSON body sent to the provider. Off by default because that
+    #: body contains the whole message, and for a reset email that means the code
+    #: itself. Turn it on to debug a rejection, then turn it off again.
+    EMAIL_LOG_PAYLOAD: bool = False
 
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
