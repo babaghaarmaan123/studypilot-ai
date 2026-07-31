@@ -1,0 +1,77 @@
+name: Daily study reminders
+
+# The app has no scheduler of its own: a free Render web service spins down when
+# idle, so an in-process timer would not be running at 07:00, and Render's cron
+# jobs are a paid feature. GitHub Actions cron is free, so it does the waking up.
+#
+# Requires two repository secrets (Settings -> Secrets and variables -> Actions):
+#   API_BASE_URL   e.g. https://studypilot-ai-api.onrender.com
+#   TASK_SECRET    the same value as TASK_SECRET on the API service
+#
+# Without them this workflow fails loudly rather than silently doing nothing.
+
+on:
+  schedule:
+    # 06:10 UTC. GitHub's scheduler is best-effort and often runs late, which is
+    # fine: the endpoint stamps each student with the day it emailed them, so a
+    # late or duplicated run cannot send twice.
+    - cron: '10 6 * * *'
+  # So it can be tried by hand, including as a dry run, without waiting a day.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report who would be emailed without sending'
+        type: boolean
+        default: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the secrets are present
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          TASK_SECRET: ${{ secrets.TASK_SECRET }}
+        run: |
+          missing=0
+          for name in API_BASE_URL TASK_SECRET; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Trigger the daily reminder sweep
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          TASK_SECRET: ${{ secrets.TASK_SECRET }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+          url="${API_BASE_URL%/}/api/v1/tasks/daily-reminders?dry_run=${DRY_RUN}"
+
+          # A free instance may be asleep, and the first request pays a cold
+          # start of up to a minute. Retry so a spin-up does not look like a
+          # failure, and keep the body so a real error is visible in the log.
+          for attempt in 1 2 3; do
+            echo "attempt $attempt"
+            code=$(curl -sS -o response.json -w '%{http_code}' \
+              --max-time 180 \
+              -X POST "$url" \
+              -H "X-Task-Key: ${TASK_SECRET}") && true
+            echo "HTTP $code"
+            cat response.json || true
+            echo
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            # 401 and 503 are configuration problems: retrying will not help.
+            if [ "$code" = "401" ] || [ "$code" = "503" ]; then
+              echo "::error::Task endpoint refused the request (HTTP $code). Check TASK_SECRET on both sides."
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "::error::Could not reach the reminder endpoint after 3 attempts"
+          exit 1

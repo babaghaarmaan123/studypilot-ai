@@ -26,6 +26,7 @@ import smtplib
 import ssl
 import urllib.error
 import urllib.request
+from datetime import date
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid, parseaddr
 
@@ -273,6 +274,86 @@ def send_password_reset_code(to: str, name: str, code: str) -> bool:
       <p style="margin:0;font-size:14px;line-height:1.55;color:#5a6274">
         If you did not ask to reset your password you can ignore this email.
         Your password has not been changed.
+      </p>
+    </div>
+    <p style="max-width:520px;margin:16px auto 0;font-size:12px;color:#8a91a0;text-align:center">
+      {settings.EMAIL_FROM_NAME}
+    </p>
+  </body>
+</html>
+"""
+    return send_email(to, subject, text_body, html_body)
+
+
+# ---------------------------------------------------------------------------
+# Daily plan
+# ---------------------------------------------------------------------------
+def send_daily_plan(to: str, name: str, day: date, sessions: list) -> bool:
+    """Email one day's schedule to a student who asked for email reminders.
+
+    `sessions` are StudySession rows for that day, already ordered. Callers only
+    send when there is at least one, because "nothing scheduled today" is not
+    worth an email.
+    """
+    first_name = (name or "there").split()[0]
+    pretty_day = day.strftime("%A %d %B")
+    total = sum(s.duration_minutes or 0 for s in sessions)
+    hours, minutes = divmod(total, 60)
+    total_text = f"{hours}h {minutes:02d}m" if hours else f"{minutes}m"
+    count = len(sessions)
+    subject = (
+        f"Your StudyPilot plan for {day.strftime('%A')}: "
+        f"{count} session{'s' if count != 1 else ''}, {total_text}"
+    )
+
+    def _ends(start: str, duration: int) -> str:
+        try:
+            hh, mm = (int(part) for part in start.split(":")[:2])
+        except (ValueError, TypeError):
+            return ""
+        total_minutes = hh * 60 + mm + (duration or 0)
+        return f"{(total_minutes // 60) % 24:02d}:{total_minutes % 60:02d}"
+
+    lines = []
+    rows = []
+    for session in sessions:
+        start = (session.start_time or "")[:5]
+        finish = _ends(session.start_time or "", session.duration_minutes or 0)
+        span = f"{start}-{finish}" if finish else start
+        subject_name = session.subject.name if session.subject else ""
+        label = f"{subject_name}: {session.title}" if subject_name else session.title
+        lines.append(f"  {span}  {label}")
+        rows.append(
+            f'<tr>'
+            f'<td style="padding:8px 12px 8px 0;white-space:nowrap;font-family:'
+            f"'SFMono-Regular',Consolas,monospace;font-size:14px;color:#157976\">{span}</td>"
+            f'<td style="padding:8px 0;font-size:14px;color:#151b28">{label}</td>'
+            f"</tr>"
+        )
+
+    text_body = (
+        f"Morning {first_name},\n\n"
+        f"Here is your plan for {pretty_day} "
+        f"({count} session{'s' if count != 1 else ''}, {total_text} in total):\n\n"
+        + "\n".join(lines)
+        + "\n\nOpen StudyPilot to start a session or move things around.\n\n"
+        "You are getting this because email reminders are on. Turn them off in "
+        "Settings if you would rather not.\n"
+    )
+
+    html_body = f"""\
+<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f6f7f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#151b28">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e4e7ec;border-radius:14px;padding:32px">
+      <p style="margin:0 0 4px;font-size:18px;font-weight:700">Your plan for {pretty_day}</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#5a6274">
+        {count} session{'s' if count != 1 else ''} &middot; {total_text} in total
+      </p>
+      <table style="width:100%;border-collapse:collapse">{''.join(rows)}</table>
+      <p style="margin:24px 0 0;font-size:13px;color:#5a6274">
+        You are getting this because email reminders are on. You can turn them
+        off in Settings.
       </p>
     </div>
     <p style="max-width:520px;margin:16px auto 0;font-size:12px;color:#8a91a0;text-align:center">

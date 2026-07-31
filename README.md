@@ -152,6 +152,7 @@ refreshing on `/planner` returns a 404.
 | `UPLOAD_DIR` | no | `uploads` | Point at a mounted disk in production |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | no | `1440` | |
 | `REMEMBER_ME_EXPIRE_MINUTES` | no | `43200` | |
+| `TASK_SECRET` | for daily emails | — | Guards `POST /tasks/daily-reminders`. Unset refuses every request |
 | `EMAIL_PROVIDER` | no | `smtp` | `brevo`, `resend` or `smtp`. **`brevo` on Render's free tier** — see below |
 | `EMAIL_API_KEY` | for `brevo`/`resend` | — | Provider API key |
 | `SMTP_HOST` | for `smtp` | — | Unset means reset codes are logged, not emailed |
@@ -202,6 +203,40 @@ is the quickest way to tell whether the variables took effect.
 Locally you can leave it unset: while `DEBUG=true` the code is also returned in
 the `/auth/forgot-password` response and prefilled on the reset screen, so the
 flow can be exercised without any provider.
+
+#### Daily plan email
+
+The **Daily plan email** setting sends each student a morning list of that day's
+pending sessions. Students with nothing scheduled are skipped, because a message
+saying "nothing today" is the fastest way to teach someone to ignore these.
+
+There is no scheduler in the app. A free Render web service spins down when idle,
+so an in-process timer would not be running at 07:00, and Render's cron jobs are
+paid. Two triggers exist instead:
+
+```bash
+# anywhere you have a shell and the database
+cd backend && python -m scripts.send_reminders --dry-run
+```
+
+```bash
+# for an external scheduler
+curl -X POST "$API/api/v1/tasks/daily-reminders" -H "X-Task-Key: $TASK_SECRET"
+```
+
+`.github/workflows/daily-reminders.yml` does the second on a 06:10 UTC cron, free
+of charge. It needs two repository secrets under **Settings → Secrets and
+variables → Actions**:
+
+| Secret | Value |
+|---|---|
+| `API_BASE_URL` | `https://studypilot-ai-api.onrender.com` |
+| `TASK_SECRET` | the same value as `TASK_SECRET` on the Render service |
+
+Running the sweep twice is safe: each student is stamped with the day they were
+last emailed, so a repeat sends nothing. A send that fails is deliberately left
+unstamped, so the next run retries it rather than skipping that student for the
+day. Use `?dry_run=true` (or `--dry-run`) to see who would be emailed.
 
 ### Frontend
 

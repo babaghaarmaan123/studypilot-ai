@@ -94,6 +94,13 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      # Shared secret for POST /api/v1/tasks/daily-reminders, which the GitHub
+      # Actions workflow calls each morning to send the daily plan emails.
+      # Render generates it; copy the value into a repository secret of the same
+      # name. Unset means the task endpoints refuse everything, so no daily
+      # emails go out.
+      - key: TASK_SECRET
+        generateValue: true
 
     # Uncomment together with a paid instance type to keep uploaded files
     # across deploys:

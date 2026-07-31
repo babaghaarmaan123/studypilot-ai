@@ -14,6 +14,7 @@ from app.api.v1 import (
     plans,
     revision,
     subjects,
+    tasks,
     users,
 )
 
@@ -31,3 +32,4 @@ api_router.include_router(past_papers.router)
 api_router.include_router(achievements.router)
 api_router.include_router(analytics.router)
 api_router.include_router(notifications.router)
+api_router.include_router(tasks.router)

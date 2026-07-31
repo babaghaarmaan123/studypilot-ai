@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     # Unset means nothing is sent and the code is written to the log instead,
     # which is what you want locally and must never be what happens in
     # production. See `_guard_production` below.
+    #: Shared secret for the scheduled-task endpoints, which no logged-in user
+    #: owns and so cannot be protected by a normal JWT. Unset means those
+    #: endpoints refuse every request, which is the right default: an open
+    #: trigger is a way to make the app email everybody on demand.
+    TASK_SECRET: Optional[str] = None
+
     EMAIL_PROVIDER: str = "smtp"
     #: API key for `brevo` or `resend`. Ignored by the `smtp` provider.
     EMAIL_API_KEY: Optional[str] = None

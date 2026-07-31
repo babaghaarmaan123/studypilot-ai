@@ -36,7 +36,7 @@ const THEME_OPTIONS = [
 const TOGGLES = [
   { key: 'notifications_enabled', label: 'In-app notifications', hint: 'Bell alerts for reminders and milestones.' },
   { key: 'study_reminders', label: 'Study reminders', hint: 'Nudges before your scheduled sessions.' },
-  { key: 'email_reminders', label: 'Email reminders', hint: 'Occasional emails when you fall behind.' },
+  { key: 'email_reminders', label: 'Daily plan email', hint: "A morning email listing that day's sessions." },
   { key: 'weekly_report', label: 'Weekly report', hint: 'A summary of your progress every week.' },
   { key: 'calendar_sync', label: 'Calendar sync', hint: 'Keep your timetable mirrored to your calendar.' },
   { key: 'auto_reschedule', label: 'Auto-reschedule', hint: 'Automatically rebuild your plan after missed sessions.' },

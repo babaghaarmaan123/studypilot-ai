@@ -129,6 +129,10 @@ class UserSettings(Base, TimestampMixin):
     calendar_sync: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_reschedule: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    #: The day the last daily-plan email went out, so a scheduler that fires
+    #: twice (or a manual run after an automatic one) does not send twice.
+    last_reminder_sent_on: Mapped[Optional[date]] = mapped_column(Date)
+
     user: Mapped["User"] = relationship(back_populates="settings")
 
 
